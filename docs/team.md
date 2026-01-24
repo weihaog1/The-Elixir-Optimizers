@@ -2,15 +2,16 @@
 layout: default
 title:  Team
 ---
+# }
 
-# {{ page.title }}
+## Alan Guo
 
+***UCI Net ID***: weihaog1
 
-## Team Member 1
-***UCI Net ID***: ucinetid1
+## Josh Talla
 
-## Team Member 2
-***UCI Net ID***: ucinetid2
+***UCI Net ID***: tallaj
 
-## Team Member 3
-***UCI Net ID***: ucinetid3
+## Lakshya Shrivastava
+
+***UCI Net ID***: Lshrivas
