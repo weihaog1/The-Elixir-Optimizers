@@ -2,8 +2,6 @@
 layout: default
 title:  Team
 ---
-# }
-
 ## Alan Guo
 
 ***UCI Net ID***: weihaog1
