@@ -32,14 +32,14 @@ Executed via automated input (PyAutoGUI) to the game client.
 
   The agent should demonstrate basic competence by making contextually reasonable card placements (e.g., placing defensive units when under attack).
 
-- **Realistic Goal:** Train a reinforcement learning agent using **imitation learning as a warm start**, followed by **online RL fine-tuning (PPO)**, that can consistently defeat the in-game "Trainer" AI opponents. We will:
+- **Realistic Goal:** Train a reinforcement learning agent using **imitation learning as a warm start**, followed by **online RL fine-tuning (PPO)**, that can consistently defeat the in-game "Trainer" AI. We will:
   - Conduct systematic experiments comparing behavior cloning, offline RL (Decision Transformer), and online RL approaches
   - Analyze what strategies the agent learns through visualization of its decision-making patterns
-  - Achieve >60% win rate against Trainer AI
+  - Achieve >60% win rate against Trainer Bot
 
-- **Moonshot Goal:** Develop an agent that achieves **competitive performance** against the built-in AI at higher difficulty levels or reaches a meaningful trophy count in ladder matches. Additionally:
+- **Moonshot Goal:** Develop an agent that achieves **competitive performance** against the Trainer Bot and high trophy real human players. Additionally:
   - Demonstrate **transfer learning** by training on one deck archetype and successfully adapting to others
-  - Show the agent has learned generalizable Clash Royale strategies rather than deck-specific patterns
+  - Demonstrate real-time adaptation by adjusting strategy mid-match based on the opponent's deck archetype and playstyle
 
 ## AI/ML Algorithms
 
@@ -56,7 +56,7 @@ We plan to use **imitation learning** (behavior cloning) to bootstrap a policy f
 
 ### Quantitative Evaluation
 
-Our primary metric will be **win rate** against standardized opponents, measured across multiple matches to account for game variance. We will establish the following baselines:
+Our primary metric will be **win rate** against Trainer Bot, measured across multiple matches to account for game variance. We will establish the following baselines:
 
 | Baseline | Description | Expected Win Rate |
 |----------|-------------|-------------------|
@@ -68,8 +68,7 @@ Our primary metric will be **win rate** against standardized opponents, measured
 **Secondary metrics** include:
 - Average crowns per game (0–3 scale)
 - Elixir efficiency (damage dealt per elixir spent)
-- Game duration distribution
-- CV pipeline: detection accuracy (mAP) and inference latency (target: <100ms/frame)
+- CV pipeline: detection accuracy (mAP) and inference latency
 
 ### Qualitative Analysis
 
@@ -94,6 +93,6 @@ We used AI tools (Claude) in the following aspects of this proposal:
 
 1. **Literature Review:** AI assisted in searching for and summarizing relevant academic papers (e.g., the KataCR paper on arXiv, the Clash Royale Challenge paper from FedCSIS 2019) and open-source projects (KataCR, CRBot-public).
 
-2. **Technical Research:** AI helped identify available datasets (Kaggle 481M matches dataset, Clash Royale Replay Dataset), compare different technical approaches (online vs. offline RL, simulator vs. real game), and understand the architectures used in prior work.
+2. **Technical Research:** AI helped identify available datasets (Clash Royale Replay Dataset), compare different technical approaches (online vs. offline RL, simulator vs. real game), and understand the architectures used in prior work.
 
 All AI-generated content was reviewed, verified against primary sources, and edited by team members. The core project ideas, specific technical decisions (e.g., choosing Google Play Games over emulators, focusing on real-game play rather than simulators), and evaluation criteria reflect our own analysis and judgment. We will continue to document AI tool usage throughout the project in our progress reports.
