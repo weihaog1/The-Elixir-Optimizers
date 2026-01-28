@@ -1,0 +1,7 @@
+cd /workspace/project-alan/cr-object-detection && python scripts/train_synthetic.py --model yolov8s.pt --epochs 2 --batch 8 --imgsz 640 --workers 2 --name sanity_check
+
+cd /workspace/project-alan/cr-object-detection && python scripts/train_synthetic.py --model yolov8s.pt --epochs 50 --batch 16 --imgsz 960 --workers 4
+
+cd /workspace/project-alan/cr-object-detection && python scripts/train_synthetic.py --model yolov8s.pt --epochs 50 --batch 8 --imgsz 960 --workers 4 --name yolov8s_gen_v1_b8
+
+cd /workspace/project-alan/cr-object-detection && python scripts/train_synthetic.py --resume
