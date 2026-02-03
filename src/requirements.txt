@@ -1,0 +1,27 @@
+# Clash Royale Object Detection - Requirements
+# Core dependencies for Windows
+
+# YOLOv8 for object detection
+ultralytics>=8.0.0
+
+# PyTorch (install separately based on your CUDA version)
+# Visit: https://pytorch.org/get-started/locally/
+# For CPU: pip install torch torchvision
+# For CUDA 11.8: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# For CUDA 12.1: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Screen capture and image processing
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+mss>=9.0.0  # Fast cross-platform screen capture
+
+# For Android device screen mirroring (optional)
+# scrcpy-client>=0.4.0  # Uncomment if using Android device
+
+# Visualization
+matplotlib>=3.7.0
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
