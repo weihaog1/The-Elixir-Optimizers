@@ -1,0 +1,184 @@
+{
+  "timestamp": 110,
+  "frame_index": 3300,
+  "conf_threshold": 0.5,
+  "num_detections": 16,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9562,
+      "bbox": [
+        449.5,
+        109.1,
+        627.4,
+        342.8
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.9467,
+      "bbox": [
+        423.2,
+        1427.2,
+        654.9,
+        1490.8
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9397,
+      "bbox": [
+        747.3,
+        1079.4,
+        901.9,
+        1269.2
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9359,
+      "bbox": [
+        451.8,
+        1210.0,
+        623.2,
+        1424.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9347,
+      "bbox": [
+        746.8,
+        294.6,
+        894.3,
+        473.1
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9262,
+      "bbox": [
+        187.3,
+        291.0,
+        330.3,
+        470.5
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9252,
+      "bbox": [
+        180.5,
+        254.1,
+        338.8,
+        309.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9169,
+      "bbox": [
+        738.8,
+        254.5,
+        893.8,
+        308.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9017,
+      "bbox": [
+        743.8,
+        1180.0,
+        903.7,
+        1223.2
+      ]
+    },
+    {
+      "class_id": 12,
+      "class_name": "elixir",
+      "confidence": 0.8968,
+      "bbox": [
+        232.3,
+        958.1,
+        282.6,
+        1020.2
+      ]
+    },
+    {
+      "class_id": 9,
+      "class_name": "clock",
+      "confidence": 0.8786,
+      "bbox": [
+        481.4,
+        1131.7,
+        548.8,
+        1208.8
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8595,
+      "bbox": [
+        100.4,
+        877.5,
+        416.6,
+        931.9
+      ]
+    },
+    {
+      "class_id": 147,
+      "class_name": "evolution-symbol",
+      "confidence": 0.7371,
+      "bbox": [
+        280.5,
+        805.2,
+        332.8,
+        867.1
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6295,
+      "bbox": [
+        250.1,
+        885.4,
+        424.6,
+        931.3
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.5521,
+      "bbox": [
+        25.7,
+        1860.8,
+        181.4,
+        1912.0
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5157,
+      "bbox": [
+        47.8,
+        1783.0,
+        162.1,
+        1900.6
+      ]
+    }
+  ]
+}
