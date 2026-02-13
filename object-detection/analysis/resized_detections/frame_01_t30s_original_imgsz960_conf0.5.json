@@ -1,0 +1,164 @@
+{
+  "timestamp": 30,
+  "input": "original",
+  "input_resolution": "1080x1920",
+  "imgsz": 960,
+  "conf_threshold": 0.5,
+  "num_detections": 14,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9698,
+      "bbox": [
+        453.0,
+        109.4,
+        628.3,
+        339.7
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9587,
+      "bbox": [
+        455.2,
+        1214.1,
+        622.4,
+        1419.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9386,
+      "bbox": [
+        189.4,
+        1079.2,
+        329.9,
+        1263.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.937,
+      "bbox": [
+        748.5,
+        297.0,
+        892.8,
+        471.9
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9309,
+      "bbox": [
+        184.3,
+        254.5,
+        339.3,
+        307.6
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9299,
+      "bbox": [
+        177.2,
+        1184.6,
+        337.2,
+        1227.4
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9275,
+      "bbox": [
+        188.9,
+        290.3,
+        328.9,
+        471.0
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9263,
+      "bbox": [
+        756.2,
+        1079.9,
+        892.5,
+        1263.0
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9239,
+      "bbox": [
+        739.2,
+        256.1,
+        892.1,
+        308.6
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9236,
+      "bbox": [
+        744.3,
+        1184.6,
+        902.5,
+        1226.6
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.83,
+      "bbox": [
+        278.2,
+        861.1,
+        365.0,
+        887.9
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.7783,
+      "bbox": [
+        40.6,
+        1725.0,
+        167.7,
+        1772.5
+      ]
+    },
+    {
+      "class_id": 84,
+      "class_name": "baby-dragon",
+      "confidence": 0.709,
+      "bbox": [
+        182.3,
+        478.3,
+        322.1,
+        588.7
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.6505,
+      "bbox": [
+        442.9,
+        1706.3,
+        636.6,
+        1831.3
+      ]
+    }
+  ]
+}

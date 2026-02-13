@@ -1,0 +1,219 @@
+{
+  "timestamp": 140,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 960,
+  "conf_threshold": 0.5,
+  "num_detections": 19,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9642,
+      "bbox": [
+        237.8,
+        50.3,
+        329.8,
+        160.9
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9332,
+      "bbox": [
+        238.2,
+        561.5,
+        330.1,
+        666.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.925,
+      "bbox": [
+        94.9,
+        118.6,
+        177.5,
+        144.1
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.923,
+      "bbox": [
+        391.5,
+        551.7,
+        474.0,
+        572.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9206,
+      "bbox": [
+        389.0,
+        119.2,
+        468.1,
+        144.7
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9205,
+      "bbox": [
+        393.9,
+        137.7,
+        468.7,
+        222.7
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9134,
+      "bbox": [
+        98.7,
+        135.8,
+        171.3,
+        220.3
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8757,
+      "bbox": [
+        191.7,
+        451.0,
+        238.7,
+        465.4
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.8605,
+      "bbox": [
+        395.9,
+        502.8,
+        468.7,
+        592.0
+      ]
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.8379,
+      "bbox": [
+        89.6,
+        534.6,
+        131.8,
+        576.3
+      ]
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.8055,
+      "bbox": [
+        81.1,
+        554.5,
+        124.0,
+        602.0
+      ]
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.7948,
+      "bbox": [
+        117.2,
+        549.8,
+        163.6,
+        597.6
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.7738,
+      "bbox": [
+        222.3,
+        661.3,
+        343.2,
+        697.0
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.7586,
+      "bbox": [
+        104.5,
+        415.6,
+        153.1,
+        430.6
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.6901,
+      "bbox": [
+        116.2,
+        378.1,
+        158.3,
+        392.2
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6248,
+      "bbox": [
+        20.3,
+        805.2,
+        88.4,
+        827.4
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.6029,
+      "bbox": [
+        149.7,
+        409.2,
+        185.3,
+        439.8
+      ]
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.5993,
+      "bbox": [
+        158.5,
+        397.3,
+        174.1,
+        413.8
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.5411,
+      "bbox": [
+        90.8,
+        423.0,
+        122.7,
+        454.9
+      ]
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "timestamp": 50,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 960,
+  "conf_threshold": 0.5,
+  "num_detections": 14,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9576,
+      "bbox": [
+        238.0,
+        49.7,
+        330.0,
+        160.0
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9491,
+      "bbox": [
+        239.8,
+        565.7,
+        326.5,
+        662.9
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9335,
+      "bbox": [
+        396.4,
+        501.8,
+        468.4,
+        592.3
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9308,
+      "bbox": [
+        391.7,
+        552.3,
+        473.8,
+        573.0
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9219,
+      "bbox": [
+        98.9,
+        134.5,
+        171.9,
+        220.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9216,
+      "bbox": [
+        97.2,
+        118.1,
+        177.1,
+        144.1
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9202,
+      "bbox": [
+        388.6,
+        119.0,
+        468.4,
+        144.5
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9199,
+      "bbox": [
+        393.8,
+        137.6,
+        469.1,
+        222.3
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9042,
+      "bbox": [
+        92.7,
+        551.3,
+        175.1,
+        572.1
+      ]
+    },
+    {
+      "class_id": 9,
+      "class_name": "clock",
+      "confidence": 0.8694,
+      "bbox": [
+        119.5,
+        431.8,
+        153.2,
+        468.1
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8391,
+      "bbox": [
+        134.5,
+        480.4,
+        181.2,
+        493.3
+      ]
+    },
+    {
+      "class_id": 3,
+      "class_name": "dagger-duchess-tower",
+      "confidence": 0.7815,
+      "bbox": [
+        103.1,
+        501.5,
+        168.0,
+        584.9
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6933,
+      "bbox": [
+        20.0,
+        805.1,
+        87.9,
+        827.5
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.6346,
+      "bbox": [
+        20.3,
+        732.8,
+        88.8,
+        794.0
+      ]
+    }
+  ]
+}

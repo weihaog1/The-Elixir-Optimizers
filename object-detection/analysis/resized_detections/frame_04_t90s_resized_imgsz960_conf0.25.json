@@ -1,0 +1,241 @@
+{
+  "timestamp": 90,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 960,
+  "conf_threshold": 0.25,
+  "num_detections": 21,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9568,
+      "bbox": [
+        238.0,
+        50.5,
+        330.1,
+        160.8
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.931,
+      "bbox": [
+        95.4,
+        118.8,
+        177.2,
+        144.5
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9215,
+      "bbox": [
+        391.4,
+        551.4,
+        474.0,
+        572.6
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9211,
+      "bbox": [
+        394.0,
+        137.6,
+        469.0,
+        222.3
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9203,
+      "bbox": [
+        388.9,
+        119.1,
+        468.4,
+        144.6
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9181,
+      "bbox": [
+        98.6,
+        135.6,
+        171.2,
+        220.4
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.8744,
+      "bbox": [
+        237.0,
+        557.9,
+        333.7,
+        665.1
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.8352,
+      "bbox": [
+        396.0,
+        502.6,
+        468.5,
+        591.8
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.77,
+      "bbox": [
+        222.4,
+        661.9,
+        342.1,
+        696.1
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.6326,
+      "bbox": [
+        130.6,
+        469.0,
+        182.1,
+        484.8
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.632,
+      "bbox": [
+        125.6,
+        476.9,
+        176.2,
+        491.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.6106,
+      "bbox": [
+        141.1,
+        878.7,
+        239.0,
+        895.7
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.6066,
+      "bbox": [
+        176.6,
+        448.7,
+        210.2,
+        460.3
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.552,
+      "bbox": [
+        20.7,
+        734.0,
+        88.9,
+        793.8
+      ]
+    },
+    {
+      "class_id": 34,
+      "class_name": "the-log",
+      "confidence": 0.3868,
+      "bbox": [
+        373.6,
+        0.0,
+        470.5,
+        23.5
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.3804,
+      "bbox": [
+        175.5,
+        508.7,
+        203.1,
+        534.5
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.3709,
+      "bbox": [
+        20.0,
+        805.3,
+        87.5,
+        826.7
+      ]
+    },
+    {
+      "class_id": 30,
+      "class_name": "barbarian",
+      "confidence": 0.3614,
+      "bbox": [
+        138.8,
+        486.4,
+        183.3,
+        528.7
+      ]
+    },
+    {
+      "class_id": 139,
+      "class_name": "golemite",
+      "confidence": 0.3268,
+      "bbox": [
+        163.8,
+        456.8,
+        216.4,
+        527.5
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.3212,
+      "bbox": [
+        165.8,
+        449.3,
+        196.4,
+        461.4
+      ]
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.2741,
+      "bbox": [
+        163.1,
+        448.0,
+        181.3,
+        463.4
+      ]
+    }
+  ]
+}

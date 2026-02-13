@@ -1,0 +1,241 @@
+{
+  "timestamp": 15,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 960,
+  "conf_threshold": 0.25,
+  "num_detections": 21,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9601,
+      "bbox": [
+        238.2,
+        50.9,
+        329.6,
+        160.3
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9487,
+      "bbox": [
+        238.6,
+        566.0,
+        326.5,
+        665.3
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.948,
+      "bbox": [
+        93.0,
+        552.1,
+        175.7,
+        573.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9365,
+      "bbox": [
+        97.8,
+        501.6,
+        172.1,
+        592.0
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9332,
+      "bbox": [
+        393.9,
+        138.2,
+        468.7,
+        221.7
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.933,
+      "bbox": [
+        396.4,
+        502.1,
+        468.4,
+        592.1
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9276,
+      "bbox": [
+        391.7,
+        552.2,
+        473.8,
+        572.9
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9273,
+      "bbox": [
+        388.6,
+        119.2,
+        468.6,
+        144.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9205,
+      "bbox": [
+        95.8,
+        117.7,
+        177.2,
+        144.5
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.8754,
+      "bbox": [
+        99.9,
+        135.2,
+        173.0,
+        225.3
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8693,
+      "bbox": [
+        102.6,
+        279.5,
+        132.8,
+        307.8
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.776,
+      "bbox": [
+        134.4,
+        283.9,
+        164.8,
+        314.5
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.6246,
+      "bbox": [
+        20.3,
+        733.2,
+        88.7,
+        793.7
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.624,
+      "bbox": [
+        240.4,
+        726.8,
+        331.0,
+        840.7
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.6179,
+      "bbox": [
+        106.5,
+        257.3,
+        139.3,
+        283.9
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6026,
+      "bbox": [
+        19.0,
+        805.5,
+        88.1,
+        827.5
+      ]
+    },
+    {
+      "class_id": 35,
+      "class_name": "archer",
+      "confidence": 0.5986,
+      "bbox": [
+        183.7,
+        218.5,
+        225.2,
+        260.1
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5006,
+      "bbox": [
+        334.4,
+        744.1,
+        441.2,
+        855.6
+      ]
+    },
+    {
+      "class_id": 34,
+      "class_name": "the-log",
+      "confidence": 0.4723,
+      "bbox": [
+        373.0,
+        0.0,
+        471.0,
+        24.9
+      ]
+    },
+    {
+      "class_id": 63,
+      "class_name": "bandit",
+      "confidence": 0.3941,
+      "bbox": [
+        69.9,
+        187.5,
+        111.9,
+        232.3
+      ]
+    },
+    {
+      "class_id": 42,
+      "class_name": "firecracker",
+      "confidence": 0.2951,
+      "bbox": [
+        181.6,
+        218.9,
+        225.0,
+        260.1
+      ]
+    }
+  ]
+}

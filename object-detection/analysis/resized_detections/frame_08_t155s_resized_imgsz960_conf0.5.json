@@ -1,0 +1,120 @@
+{
+  "timestamp": 155,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 960,
+  "conf_threshold": 0.5,
+  "num_detections": 10,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9596,
+      "bbox": [
+        237.9,
+        51.1,
+        329.5,
+        160.2
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9384,
+      "bbox": [
+        238.3,
+        561.5,
+        329.0,
+        665.8
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9301,
+      "bbox": [
+        393.8,
+        138.1,
+        468.4,
+        221.8
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9288,
+      "bbox": [
+        391.3,
+        552.2,
+        473.6,
+        572.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9263,
+      "bbox": [
+        95.7,
+        118.4,
+        177.1,
+        144.1
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9261,
+      "bbox": [
+        388.7,
+        119.2,
+        468.5,
+        144.8
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9143,
+      "bbox": [
+        396.0,
+        503.3,
+        468.1,
+        591.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9137,
+      "bbox": [
+        98.4,
+        135.9,
+        171.5,
+        220.4
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.7564,
+      "bbox": [
+        451.9,
+        747.7,
+        542.6,
+        852.4
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5586,
+      "bbox": [
+        20.7,
+        733.7,
+        89.0,
+        793.3
+      ]
+    }
+  ]
+}

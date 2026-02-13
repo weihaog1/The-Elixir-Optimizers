@@ -1,0 +1,307 @@
+{
+  "timestamp": 70,
+  "input": "resized",
+  "input_resolution": "568x896",
+  "imgsz": 640,
+  "conf_threshold": 0.25,
+  "num_detections": 27,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9617,
+      "bbox": [
+        239.2,
+        50.0,
+        329.6,
+        159.9
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9397,
+      "bbox": [
+        240.9,
+        565.3,
+        326.2,
+        661.5
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9337,
+      "bbox": [
+        394.1,
+        137.5,
+        469.4,
+        221.9
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9335,
+      "bbox": [
+        395.2,
+        502.0,
+        473.3,
+        594.2
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9204,
+      "bbox": [
+        96.4,
+        117.4,
+        177.7,
+        144.3
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9181,
+      "bbox": [
+        99.4,
+        135.3,
+        173.4,
+        221.6
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9164,
+      "bbox": [
+        390.3,
+        118.6,
+        468.9,
+        144.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9026,
+      "bbox": [
+        392.3,
+        550.5,
+        474.5,
+        572.3
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9022,
+      "bbox": [
+        95.6,
+        502.0,
+        172.3,
+        593.7
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.8867,
+      "bbox": [
+        92.8,
+        549.0,
+        178.0,
+        570.9
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8767,
+      "bbox": [
+        246.2,
+        465.0,
+        296.6,
+        479.5
+      ]
+    },
+    {
+      "class_id": 9,
+      "class_name": "clock",
+      "confidence": 0.8615,
+      "bbox": [
+        175.7,
+        336.6,
+        206.1,
+        371.2
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8467,
+      "bbox": [
+        1.5,
+        447.7,
+        204.3,
+        474.7
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6163,
+      "bbox": [
+        21.4,
+        804.5,
+        88.9,
+        827.6
+      ]
+    },
+    {
+      "class_id": 39,
+      "class_name": "minion",
+      "confidence": 0.5861,
+      "bbox": [
+        190.3,
+        307.1,
+        222.6,
+        339.8
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.5753,
+      "bbox": [
+        89.9,
+        322.8,
+        121.2,
+        354.0
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.566,
+      "bbox": [
+        253.7,
+        758.0,
+        337.7,
+        854.3
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.5276,
+      "bbox": [
+        132.7,
+        368.7,
+        161.6,
+        395.8
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.5259,
+      "bbox": [
+        146.6,
+        876.2,
+        219.3,
+        895.8
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.486,
+      "bbox": [
+        27.9,
+        829.6,
+        78.0,
+        886.5
+      ]
+    },
+    {
+      "class_id": 72,
+      "class_name": "goblin-cage",
+      "confidence": 0.4134,
+      "bbox": [
+        235.2,
+        474.5,
+        303.8,
+        547.9
+      ]
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.3959,
+      "bbox": [
+        96.8,
+        480.7,
+        128.0,
+        509.3
+      ]
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.3621,
+      "bbox": [
+        133.6,
+        359.7,
+        154.5,
+        373.1
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.3398,
+      "bbox": [
+        336.3,
+        733.7,
+        441.2,
+        853.4
+      ]
+    },
+    {
+      "class_id": 39,
+      "class_name": "minion",
+      "confidence": 0.3331,
+      "bbox": [
+        157.1,
+        307.5,
+        189.0,
+        344.6
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.2895,
+      "bbox": [
+        112.6,
+        302.8,
+        143.5,
+        316.6
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.2619,
+      "bbox": [
+        103.8,
+        293.8,
+        133.7,
+        307.8
+      ]
+    }
+  ]
+}

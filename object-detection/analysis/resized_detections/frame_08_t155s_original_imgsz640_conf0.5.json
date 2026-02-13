@@ -1,0 +1,175 @@
+{
+  "timestamp": 155,
+  "input": "original",
+  "input_resolution": "1080x1920",
+  "imgsz": 640,
+  "conf_threshold": 0.5,
+  "num_detections": 15,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.962,
+      "bbox": [
+        451.0,
+        109.8,
+        626.8,
+        342.5
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9435,
+      "bbox": [
+        749.8,
+        1080.1,
+        901.1,
+        1268.7
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9382,
+      "bbox": [
+        453.1,
+        1210.2,
+        623.2,
+        1424.7
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9377,
+      "bbox": [
+        746.9,
+        295.8,
+        893.3,
+        471.9
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9279,
+      "bbox": [
+        182.1,
+        253.0,
+        340.2,
+        309.1
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9239,
+      "bbox": [
+        186.9,
+        291.1,
+        330.8,
+        469.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9197,
+      "bbox": [
+        738.7,
+        255.2,
+        893.3,
+        308.1
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9027,
+      "bbox": [
+        744.1,
+        1180.3,
+        903.7,
+        1223.6
+      ]
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.882,
+      "bbox": [
+        423.5,
+        1426.7,
+        654.5,
+        1491.2
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.8535,
+      "bbox": [
+        852.3,
+        1604.2,
+        1028.6,
+        1818.0
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.7021,
+      "bbox": [
+        643.3,
+        1597.0,
+        845.9,
+        1825.5
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.687,
+      "bbox": [
+        203.7,
+        713.3,
+        603.5,
+        769.8
+      ]
+    },
+    {
+      "class_id": 147,
+      "class_name": "evolution-symbol",
+      "confidence": 0.6003,
+      "bbox": [
+        433.6,
+        639.5,
+        487.4,
+        703.9
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5601,
+      "bbox": [
+        58.7,
+        1788.0,
+        145.3,
+        1895.7
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.5027,
+      "bbox": [
+        42.9,
+        1726.2,
+        166.1,
+        1772.3
+      ]
+    }
+  ]
+}

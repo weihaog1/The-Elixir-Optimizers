@@ -1,0 +1,197 @@
+{
+  "timestamp": 50,
+  "input": "original",
+  "input_resolution": "1080x1920",
+  "imgsz": 960,
+  "conf_threshold": 0.25,
+  "num_detections": 17,
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.966,
+      "bbox": [
+        452.3,
+        107.7,
+        629.0,
+        339.3
+      ]
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9568,
+      "bbox": [
+        457.5,
+        1213.9,
+        621.4,
+        1418.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9394,
+      "bbox": [
+        746.5,
+        295.8,
+        893.2,
+        471.4
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9381,
+      "bbox": [
+        755.7,
+        1080.1,
+        892.9,
+        1263.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9358,
+      "bbox": [
+        186.9,
+        289.0,
+        329.4,
+        467.9
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9267,
+      "bbox": [
+        185.1,
+        254.2,
+        340.3,
+        307.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9249,
+      "bbox": [
+        744.3,
+        1184.7,
+        902.4,
+        1227.0
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9172,
+      "bbox": [
+        739.2,
+        255.9,
+        891.7,
+        308.4
+      ]
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9078,
+      "bbox": [
+        176.5,
+        1182.8,
+        336.9,
+        1224.5
+      ]
+    },
+    {
+      "class_id": 9,
+      "class_name": "clock",
+      "confidence": 0.873,
+      "bbox": [
+        228.2,
+        927.0,
+        293.1,
+        1002.1
+      ]
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8024,
+      "bbox": [
+        40.3,
+        1724.1,
+        168.3,
+        1773.7
+      ]
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.7866,
+      "bbox": [
+        257.3,
+        1030.4,
+        346.1,
+        1056.1
+      ]
+    },
+    {
+      "class_id": 3,
+      "class_name": "dagger-duchess-tower",
+      "confidence": 0.7133,
+      "bbox": [
+        197.2,
+        1076.7,
+        321.9,
+        1249.4
+      ]
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.4413,
+      "bbox": [
+        38.7,
+        1571.5,
+        170.9,
+        1701.5
+      ]
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.4135,
+      "bbox": [
+        195.2,
+        1079.0,
+        323.8,
+        1261.6
+      ]
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.3067,
+      "bbox": [
+        256.0,
+        1028.8,
+        288.5,
+        1059.8
+      ]
+    },
+    {
+      "class_id": 37,
+      "class_name": "knight",
+      "confidence": 0.2539,
+      "bbox": [
+        132.1,
+        847.0,
+        205.1,
+        962.1
+      ]
+    }
+  ]
+}
