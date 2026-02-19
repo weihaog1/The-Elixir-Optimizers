@@ -1,0 +1,14 @@
+path: /Users/alanguo/Codin/CS175/Project/cr-object-detection/data/cutout_test_belong
+train: train/images
+val: val/images
+nc: 9
+names:
+  0: arrows
+  1: barbarian-barrel
+  2: electro-spirit
+  3: flying-machine
+  4: goblin-cage
+  5: royal-hog
+  6: royal-recruit
+  7: zappy
+  8: padding_belong
