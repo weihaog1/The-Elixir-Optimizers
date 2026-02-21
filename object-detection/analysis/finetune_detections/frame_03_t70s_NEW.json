@@ -1,0 +1,354 @@
+{
+  "timestamp": 70,
+  "model": "NEW",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9701,
+      "bbox": [
+        452.6,
+        109.2,
+        627.2,
+        340.2
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.969,
+      "bbox": [
+        456.1,
+        1214.0,
+        621.7,
+        1417.6
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9615,
+      "bbox": [
+        748.1,
+        297.4,
+        891.6,
+        471.6
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9609,
+      "bbox": [
+        178.9,
+        256.1,
+        338.8,
+        307.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.957,
+      "bbox": [
+        187.9,
+        294.0,
+        328.0,
+        469.7
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9527,
+      "bbox": [
+        756.3,
+        1081.3,
+        891.2,
+        1262.4
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.943,
+      "bbox": [
+        38.7,
+        1574.2,
+        169.6,
+        1701.0
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.941,
+      "bbox": [
+        738.0,
+        255.9,
+        892.0,
+        308.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9366,
+      "bbox": [
+        744.1,
+        1184.4,
+        902.4,
+        1226.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9277,
+      "bbox": [
+        195.0,
+        1083.1,
+        325.6,
+        1262.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 72,
+      "class_name": "goblin-cage",
+      "confidence": 0.9239,
+      "bbox": [
+        447.8,
+        1017.4,
+        579.4,
+        1169.9
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 9,
+      "class_name": "clock",
+      "confidence": 0.9004,
+      "bbox": [
+        331.6,
+        722.9,
+        393.8,
+        796.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8991,
+      "bbox": [
+        39.4,
+        1723.9,
+        167.2,
+        1772.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.8976,
+      "bbox": [
+        177.0,
+        1181.6,
+        336.6,
+        1224.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8787,
+      "bbox": [
+        470.6,
+        998.6,
+        559.8,
+        1024.0
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.8718,
+      "bbox": [
+        509.7,
+        1693.8,
+        634.3,
+        1830.0
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8554,
+      "bbox": [
+        368.6,
+        659.3,
+        424.3,
+        723.1
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8261,
+      "bbox": [
+        249.0,
+        792.4,
+        312.3,
+        848.1
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.6842,
+      "bbox": [
+        0.0,
+        958.0,
+        366.1,
+        1020.0
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.6088,
+      "bbox": [
+        171.6,
+        691.9,
+        223.6,
+        741.1
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.5779,
+      "bbox": [
+        299.9,
+        662.7,
+        351.6,
+        722.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.4056,
+      "bbox": [
+        187.7,
+        651.5,
+        230.7,
+        697.1
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.3975,
+      "bbox": [
+        333.5,
+        696.6,
+        383.8,
+        750.4
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 12,
+      "class_name": "elixir",
+      "confidence": 0.3806,
+      "bbox": [
+        82.8,
+        1865.5,
+        114.3,
+        1899.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 39,
+      "class_name": "minion",
+      "confidence": 0.3798,
+      "bbox": [
+        174.4,
+        693.9,
+        253.0,
+        784.6
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.3773,
+      "bbox": [
+        212.6,
+        874.6,
+        273.1,
+        931.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.3754,
+      "bbox": [
+        364.0,
+        938.4,
+        410.5,
+        992.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.365,
+      "bbox": [
+        231.3,
+        1050.4,
+        281.0,
+        1106.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.2892,
+      "bbox": [
+        251.1,
+        1595.0,
+        433.0,
+        1787.9
+      ],
+      "category": "ui"
+    }
+  ]
+}

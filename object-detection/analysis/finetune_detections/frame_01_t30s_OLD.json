@@ -1,0 +1,222 @@
+{
+  "timestamp": 30,
+  "model": "OLD",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9698,
+      "bbox": [
+        453.0,
+        109.4,
+        628.3,
+        339.7
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9587,
+      "bbox": [
+        455.2,
+        1214.1,
+        622.4,
+        1419.2
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9386,
+      "bbox": [
+        189.4,
+        1079.2,
+        329.9,
+        1263.2
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.937,
+      "bbox": [
+        748.5,
+        297.0,
+        892.8,
+        471.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9309,
+      "bbox": [
+        184.3,
+        254.5,
+        339.3,
+        307.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9299,
+      "bbox": [
+        177.2,
+        1184.6,
+        337.2,
+        1227.4
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9275,
+      "bbox": [
+        188.9,
+        290.3,
+        328.9,
+        471.0
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9263,
+      "bbox": [
+        756.2,
+        1079.9,
+        892.5,
+        1263.0
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9239,
+      "bbox": [
+        739.2,
+        256.1,
+        892.1,
+        308.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9236,
+      "bbox": [
+        744.3,
+        1184.6,
+        902.5,
+        1226.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.83,
+      "bbox": [
+        278.2,
+        861.1,
+        365.0,
+        887.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.7783,
+      "bbox": [
+        40.6,
+        1725.0,
+        167.7,
+        1772.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 84,
+      "class_name": "baby-dragon",
+      "confidence": 0.709,
+      "bbox": [
+        182.3,
+        478.3,
+        322.1,
+        588.7
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.6505,
+      "bbox": [
+        442.9,
+        1706.3,
+        636.6,
+        1831.3
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.4467,
+      "bbox": [
+        275.2,
+        860.2,
+        303.8,
+        889.9
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 71,
+      "class_name": "musketeer",
+      "confidence": 0.315,
+      "bbox": [
+        279.0,
+        880.4,
+        368.6,
+        976.4
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 34,
+      "class_name": "the-log",
+      "confidence": 0.3112,
+      "bbox": [
+        710.7,
+        0.1,
+        877.1,
+        45.5
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.2953,
+      "bbox": [
+        38.7,
+        1574.8,
+        170.4,
+        1701.2
+      ],
+      "category": "ui"
+    }
+  ]
+}

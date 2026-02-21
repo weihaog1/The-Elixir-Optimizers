@@ -1,0 +1,366 @@
+{
+  "timestamp": 165,
+  "model": "NEW",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9682,
+      "bbox": [
+        452.2,
+        110.5,
+        627.1,
+        340.6
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9633,
+      "bbox": [
+        453.9,
+        1205.5,
+        623.6,
+        1424.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9571,
+      "bbox": [
+        176.4,
+        255.5,
+        339.4,
+        306.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9484,
+      "bbox": [
+        747.3,
+        296.2,
+        890.8,
+        470.1
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.9449,
+      "bbox": [
+        427.9,
+        1422.6,
+        652.0,
+        1491.0
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9413,
+      "bbox": [
+        738.6,
+        255.9,
+        891.6,
+        308.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.9406,
+      "bbox": [
+        38.5,
+        1574.5,
+        169.9,
+        1700.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9346,
+      "bbox": [
+        756.8,
+        1080.1,
+        889.6,
+        1262.4
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9168,
+      "bbox": [
+        744.3,
+        1183.7,
+        902.9,
+        1225.8
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.9012,
+      "bbox": [
+        40.6,
+        1724.5,
+        167.3,
+        1773.2
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.8998,
+      "bbox": [
+        185.7,
+        295.6,
+        330.6,
+        472.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.8991,
+      "bbox": [
+        861.4,
+        1602.8,
+        1036.0,
+        1825.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8582,
+      "bbox": [
+        782.9,
+        508.3,
+        871.8,
+        536.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8564,
+      "bbox": [
+        85.6,
+        483.2,
+        138.4,
+        540.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8302,
+      "bbox": [
+        243.0,
+        569.1,
+        333.7,
+        598.4
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8192,
+      "bbox": [
+        264.7,
+        481.7,
+        318.1,
+        538.2
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.7397,
+      "bbox": [
+        158.5,
+        584.5,
+        256.6,
+        613.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 80,
+      "class_name": "hog-rider",
+      "confidence": 0.6513,
+      "bbox": [
+        164.5,
+        608.0,
+        264.3,
+        709.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.596,
+      "bbox": [
+        133.0,
+        391.7,
+        186.3,
+        444.8
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 79,
+      "class_name": "flying-machine",
+      "confidence": 0.5943,
+      "bbox": [
+        93.4,
+        697.0,
+        275.7,
+        822.4
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.5872,
+      "bbox": [
+        187.2,
+        553.9,
+        234.0,
+        597.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5262,
+      "bbox": [
+        51.7,
+        1786.8,
+        146.3,
+        1895.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.4296,
+      "bbox": [
+        233.4,
+        1576.6,
+        429.6,
+        1803.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 3,
+      "class_name": "dagger-duchess-tower",
+      "confidence": 0.3675,
+      "bbox": [
+        758.6,
+        1072.3,
+        890.7,
+        1253.7
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 39,
+      "class_name": "minion",
+      "confidence": 0.3661,
+      "bbox": [
+        132.5,
+        392.0,
+        184.5,
+        443.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 34,
+      "class_name": "the-log",
+      "confidence": 0.3366,
+      "bbox": [
+        116.6,
+        723.3,
+        280.2,
+        778.7
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.2995,
+      "bbox": [
+        160.5,
+        572.6,
+        267.8,
+        602.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 35,
+      "class_name": "archer",
+      "confidence": 0.2837,
+      "bbox": [
+        173.2,
+        394.2,
+        235.5,
+        469.5
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 80,
+      "class_name": "hog-rider",
+      "confidence": 0.2757,
+      "bbox": [
+        232.9,
+        603.2,
+        324.3,
+        710.9
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 71,
+      "class_name": "musketeer",
+      "confidence": 0.2552,
+      "bbox": [
+        243.6,
+        603.1,
+        324.8,
+        701.8
+      ],
+      "category": "troop"
+    }
+  ]
+}

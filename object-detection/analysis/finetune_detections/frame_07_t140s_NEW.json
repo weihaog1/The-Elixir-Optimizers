@@ -1,0 +1,330 @@
+{
+  "timestamp": 140,
+  "model": "NEW",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9699,
+      "bbox": [
+        452.1,
+        108.6,
+        628.0,
+        340.3
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9618,
+      "bbox": [
+        177.1,
+        256.0,
+        339.7,
+        307.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9583,
+      "bbox": [
+        747.2,
+        296.3,
+        891.4,
+        472.6
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9576,
+      "bbox": [
+        454.4,
+        1207.5,
+        623.8,
+        1423.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9543,
+      "bbox": [
+        189.2,
+        294.1,
+        329.8,
+        469.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9378,
+      "bbox": [
+        739.5,
+        255.9,
+        891.3,
+        308.4
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.9175,
+      "bbox": [
+        860.8,
+        1602.9,
+        1031.3,
+        1828.3
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9084,
+      "bbox": [
+        744.8,
+        1183.1,
+        903.0,
+        1225.4
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.8883,
+      "bbox": [
+        428.3,
+        1424.4,
+        654.9,
+        1489.7
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8863,
+      "bbox": [
+        39.2,
+        1724.3,
+        168.3,
+        1772.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8818,
+      "bbox": [
+        366.1,
+        968.3,
+        454.6,
+        996.1
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.8758,
+      "bbox": [
+        461.0,
+        1697.7,
+        634.0,
+        1830.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.8751,
+      "bbox": [
+        755.8,
+        1081.1,
+        889.1,
+        1262.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.853,
+      "bbox": [
+        158.0,
+        1197.6,
+        236.5,
+        1287.8
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.849,
+      "bbox": [
+        229.3,
+        1181.5,
+        312.7,
+        1275.6
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 83,
+      "class_name": "zappy",
+      "confidence": 0.8315,
+      "bbox": [
+        172.7,
+        1145.3,
+        253.6,
+        1228.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.8149,
+      "bbox": [
+        201.6,
+        893.5,
+        294.4,
+        920.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.8121,
+      "bbox": [
+        38.5,
+        1575.5,
+        169.2,
+        1701.8
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.803,
+      "bbox": [
+        285.3,
+        878.5,
+        355.1,
+        939.4
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 15,
+      "class_name": "skeleton",
+      "confidence": 0.8001,
+      "bbox": [
+        174.8,
+        911.6,
+        231.9,
+        967.0
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 8,
+      "class_name": "bar-level",
+      "confidence": 0.7703,
+      "bbox": [
+        302.9,
+        852.4,
+        330.5,
+        885.3
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 7,
+      "class_name": "bar",
+      "confidence": 0.7542,
+      "bbox": [
+        222.2,
+        811.7,
+        298.0,
+        837.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 3,
+      "class_name": "dagger-duchess-tower",
+      "confidence": 0.7191,
+      "bbox": [
+        757.8,
+        1074.1,
+        889.3,
+        1255.2
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5483,
+      "bbox": [
+        53.2,
+        1787.0,
+        145.8,
+        1897.5
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 79,
+      "class_name": "flying-machine",
+      "confidence": 0.4938,
+      "bbox": [
+        342.1,
+        1005.0,
+        490.9,
+        1142.7
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 40,
+      "class_name": "cannon",
+      "confidence": 0.4464,
+      "bbox": [
+        339.9,
+        1003.3,
+        475.9,
+        1139.2
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.2924,
+      "bbox": [
+        532.6,
+        1594.8,
+        635.4,
+        1690.9
+      ],
+      "category": "ui"
+    }
+  ]
+}

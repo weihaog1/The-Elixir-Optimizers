@@ -1,0 +1,162 @@
+{
+  "timestamp": 155,
+  "model": "OLD",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9693,
+      "bbox": [
+        452.1,
+        109.8,
+        627.9,
+        340.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9365,
+      "bbox": [
+        748.7,
+        296.9,
+        892.1,
+        472.0
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9353,
+      "bbox": [
+        453.4,
+        1207.1,
+        624.0,
+        1423.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9318,
+      "bbox": [
+        188.1,
+        292.7,
+        328.7,
+        468.4
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9295,
+      "bbox": [
+        181.6,
+        255.5,
+        339.0,
+        307.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.923,
+      "bbox": [
+        739.3,
+        256.0,
+        892.2,
+        308.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9218,
+      "bbox": [
+        756.5,
+        1080.3,
+        892.4,
+        1262.8
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9215,
+      "bbox": [
+        743.5,
+        1183.8,
+        902.8,
+        1226.4
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.7971,
+      "bbox": [
+        861.4,
+        1615.2,
+        1033.6,
+        1825.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.7939,
+      "bbox": [
+        40.9,
+        1725.2,
+        167.2,
+        1772.8
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.7007,
+      "bbox": [
+        425.3,
+        1420.8,
+        652.6,
+        1490.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.5548,
+      "bbox": [
+        209.5,
+        711.7,
+        576.9,
+        770.9
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5055,
+      "bbox": [
+        40.1,
+        1574.0,
+        170.6,
+        1700.5
+      ],
+      "category": "ui"
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+{
+  "timestamp": 155,
+  "model": "NEW",
+  "detections": [
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9677,
+      "bbox": [
+        452.3,
+        109.9,
+        626.8,
+        340.9
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9622,
+      "bbox": [
+        748.0,
+        297.1,
+        891.3,
+        472.3
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 0,
+      "class_name": "king-tower",
+      "confidence": 0.9602,
+      "bbox": [
+        453.7,
+        1207.4,
+        624.0,
+        1425.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9601,
+      "bbox": [
+        178.9,
+        255.8,
+        339.4,
+        307.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9557,
+      "bbox": [
+        187.8,
+        293.9,
+        328.8,
+        469.5
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 1,
+      "class_name": "queen-tower",
+      "confidence": 0.9496,
+      "bbox": [
+        756.4,
+        1079.5,
+        890.1,
+        1262.4
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9448,
+      "bbox": [
+        739.4,
+        256.3,
+        891.7,
+        308.6
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.9423,
+      "bbox": [
+        38.6,
+        1574.2,
+        169.8,
+        1701.1
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 6,
+      "class_name": "king-tower-bar",
+      "confidence": 0.9386,
+      "bbox": [
+        426.9,
+        1422.0,
+        651.4,
+        1490.7
+      ],
+      "category": "tower"
+    },
+    {
+      "class_id": 5,
+      "class_name": "tower-bar",
+      "confidence": 0.9185,
+      "bbox": [
+        743.9,
+        1184.0,
+        902.8,
+        1226.0
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.9185,
+      "bbox": [
+        861.4,
+        1603.6,
+        1034.2,
+        1825.8
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.8993,
+      "bbox": [
+        41.2,
+        1723.6,
+        166.1,
+        1772.8
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 11,
+      "class_name": "text",
+      "confidence": 0.7156,
+      "bbox": [
+        203.5,
+        713.5,
+        580.8,
+        769.1
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 10,
+      "class_name": "emote",
+      "confidence": 0.5406,
+      "bbox": [
+        646.0,
+        1605.2,
+        834.4,
+        1829.7
+      ],
+      "category": "ui"
+    },
+    {
+      "class_id": 61,
+      "class_name": "ice-wizard",
+      "confidence": 0.5183,
+      "bbox": [
+        297.4,
+        785.5,
+        379.4,
+        892.5
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 79,
+      "class_name": "flying-machine",
+      "confidence": 0.3771,
+      "bbox": [
+        51.8,
+        974.0,
+        196.1,
+        1108.9
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 28,
+      "class_name": "ice-golem",
+      "confidence": 0.3553,
+      "bbox": [
+        57.8,
+        1792.6,
+        144.9,
+        1894.6
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 65,
+      "class_name": "skeleton-dragon",
+      "confidence": 0.3475,
+      "bbox": [
+        580.2,
+        760.5,
+        670.0,
+        883.2
+      ],
+      "category": "troop"
+    },
+    {
+      "class_id": 61,
+      "class_name": "ice-wizard",
+      "confidence": 0.2608,
+      "bbox": [
+        439.0,
+        806.6,
+        529.5,
+        897.0
+      ],
+      "category": "troop"
+    }
+  ]
+}
