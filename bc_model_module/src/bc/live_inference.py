@@ -726,21 +726,76 @@ class LiveInferenceEngine:
 
         # Sync window offset from capture to dispatcher
         wl, wt = self._capture.get_window_offset()
-        self._dispatcher.update_window_offset(wl, wt)
-        config.window_left = wl
-        config.window_top = wt
-
         fw, fh = self._capture.get_frame_size()
-        config.frame_w = fw
-        config.frame_h = fh
-        self._dispatcher._frame_w = fw
-        self._dispatcher._frame_h = fh
+        self._capture_w = fw
+        self._capture_h = fh
+
+        # Detect game content bounds (exclude black pillarbox bars)
+        print("[Engine] Detecting game content bounds...")
+        probe_frame = self._capture.capture()
+        gx, gy, gw, gh = self._detect_game_bounds(probe_frame)
+        self._game_x_offset = gx
+        self._game_y_offset = gy
+        self._game_w = gw
+        self._game_h = gh
+
+        if gx > 0 or gy > 0 or gw != fw or gh != fh:
+            print(f"[Engine] Game content: ({gx},{gy}) {gw}x{gh} "
+                  f"within {fw}x{fh} capture (black bars detected)")
+        else:
+            print(f"[Engine] Game fills entire capture: {fw}x{fh}")
+
+        # Offset dispatcher by window + game content position
+        self._dispatcher.update_window_offset(wl + gx, wt + gy)
+        config.window_left = wl + gx
+        config.window_top = wt + gy
+
+        # Frame dimensions = game content (not full capture)
+        config.frame_w = gw
+        config.frame_h = gh
+        self._dispatcher._frame_w = gw
+        self._dispatcher._frame_h = gh
 
         # Session stats
         self._frame_count = 0
         self._action_count = 0
         self._noop_count = 0
         self._start_time: Optional[float] = None
+
+    @staticmethod
+    def _detect_game_bounds(
+        frame: np.ndarray, threshold: int = 15
+    ) -> tuple[int, int, int, int]:
+        """Detect game content within a frame by scanning for non-black regions.
+
+        Google Play Games renders the 9:16 Clash Royale game centered
+        within a potentially wider window, padding with black bars
+        (pillarboxing).  This method finds the actual game rectangle.
+
+        Returns:
+            (x_offset, y_offset, game_w, game_h) of the game content
+            within the frame.  Falls back to (0, 0, frame_w, frame_h)
+            when no black bars are detected.
+        """
+        fh, fw = frame.shape[:2]
+
+        # Max pixel intensity per column / row (across height and channels)
+        col_max = frame.max(axis=(0, 2))  # shape (fw,)
+        row_max = frame.max(axis=(1, 2))  # shape (fh,)
+
+        non_black_cols = np.where(col_max > threshold)[0]
+        non_black_rows = np.where(row_max > threshold)[0]
+
+        if len(non_black_cols) == 0 or len(non_black_rows) == 0:
+            # No content found – fall back to full frame
+            return 0, 0, fw, fh
+
+        x_start = int(non_black_cols[0])
+        x_end = int(non_black_cols[-1]) + 1
+        y_start = int(non_black_rows[0])
+        y_end = int(non_black_rows[-1]) + 1
+
+        return x_start, y_start, x_end - x_start, y_end - y_start
 
     def _load_policy(self, config: LiveConfig):
         """Load BCPolicy from checkpoint."""
@@ -767,7 +822,9 @@ class LiveInferenceEngine:
         print(f"  Confidence:   {self._config.confidence_threshold}")
         print(f"  Cooldown:     {self._config.action_cooldown}s")
         print(f"  Capture FPS:  {self._config.capture_fps}")
-        print(f"  Frame size:   {self._config.frame_w}x{self._config.frame_h}")
+        print(f"  Game size:    {self._game_w}x{self._game_h}")
+        print(f"  Capture size: {self._capture_w}x{self._capture_h}")
+        print(f"  Game offset:  ({self._game_x_offset}, {self._game_y_offset})")
         print(f"  Window offset: ({self._config.window_left}, "
               f"{self._config.window_top})")
         print(f"  Log file:     {self._log_path}")
@@ -787,8 +844,12 @@ class LiveInferenceEngine:
         self._frame_count += 1
         step_start = time.time()
 
-        # 1. Capture
+        # 1. Capture and crop to game content (exclude black bars)
         frame = self._capture.capture()
+        frame = frame[
+            self._game_y_offset:self._game_y_offset + self._game_h,
+            self._game_x_offset:self._game_x_offset + self._game_w,
+        ]
 
         # 2. Perception -> obs tensors
         perception_result = self._perception.process_frame(frame)

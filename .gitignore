@@ -34,3 +34,6 @@ Thumbs.db
 
 # Training outputs
 data/bc_training/
+ 
+# Live logs (ignore everything under logs/live)
+logs/live/
