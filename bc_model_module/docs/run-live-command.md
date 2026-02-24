@@ -67,7 +67,7 @@ Check the console output. You should see:
 Once satisfied, run live:
 
 ```bash
-python bc_model_module/run_live.py --model-path models/bc/best_bc.pt --window-title "Clash Royale - thegoodpersonplayer2" --confidence 1.0 --cooldown 0.5
+python bc_model_module/run_live.py --model-path models/bc/best_bc.pt --window-title "Clash Royale - thegoodpersonplayer2" --temperature 1.5 --noop-frames 3 --repeat-penalty 2.0
 ```
 
 Press **Ctrl+C** to stop at any time.
@@ -89,6 +89,10 @@ Press **Ctrl+C** to stop at any time.
 | `--confidence` | `0.0` | Min logit to execute action |
 | `--cooldown` | `0.5` | Seconds between card plays |
 | `--max-apm` | `20` | Max actions per minute |
+| `--temperature` | `1.5` | Sampling temperature (>1 = diverse, <1 = greedy) |
+| `--noop-frames` | `3` | Force noop for N frames after each card play |
+| `--repeat-penalty` | `2.0` | Logit penalty for recently-used actions |
+| `--repeat-memory` | `5` | Number of recent actions to penalize |
 | `--dry-run` | off | Log only, no mouse clicks |
 | `--log-dir` | `logs/live` | Session log directory |
 | `--quiet` | off | Suppress per-frame output |

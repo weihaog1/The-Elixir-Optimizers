@@ -178,6 +178,30 @@ def parse_args():
         default=20,
         help="Maximum actions per minute (default: 20)",
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.5,
+        help="Sampling temperature (>1 = more diverse, <1 = more greedy, default: 1.5)",
+    )
+    parser.add_argument(
+        "--noop-frames",
+        type=int,
+        default=0,
+        help="Force noop for N frames after each card play (0=auto from rate limit, default: 0)",
+    )
+    parser.add_argument(
+        "--repeat-penalty",
+        type=float,
+        default=2.0,
+        help="Logit penalty for recently-used actions (default: 2.0)",
+    )
+    parser.add_argument(
+        "--repeat-memory",
+        type=int,
+        default=5,
+        help="Number of recent actions to penalize (default: 5)",
+    )
 
     # Safety
     parser.add_argument(
@@ -228,6 +252,10 @@ def main():
         confidence_threshold=args.confidence,
         action_cooldown=args.cooldown,
         max_actions_per_minute=args.max_apm,
+        temperature=args.temperature,
+        noop_frames_after_play=args.noop_frames,
+        repeat_penalty=args.repeat_penalty,
+        repeat_memory=args.repeat_memory,
         dry_run=args.dry_run,
         log_dir=args.log_dir,
         verbose=not args.quiet,

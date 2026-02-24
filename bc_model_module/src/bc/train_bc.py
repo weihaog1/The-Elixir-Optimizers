@@ -66,6 +66,11 @@ class TrainConfig:
             aggressively. The noop class implicitly gets weight 1.0.
         grad_clip: Maximum gradient norm for clipping.
         seed: Random seed for reproducibility.
+        entropy_coeff: Coefficient for position-head entropy bonus.
+            Encourages diverse placement predictions (fights mode collapse).
+        label_smoothing: Label smoothing for position CE loss.
+            Spreads probability to non-target cells (fights sharp peaks).
+        augment: Enable horizontal flip data augmentation.
     """
 
     epochs: int = 100
@@ -74,9 +79,12 @@ class TrainConfig:
     weight_decay: float = 1e-4
     patience: int = 15
     val_ratio: float = 0.2
-    play_weight: float = 5.0
+    play_weight: float = 10.0
     grad_clip: float = 1.0
     seed: int = 42
+    entropy_coeff: float = 0.01
+    label_smoothing: float = 0.1
+    augment: bool = True
 
 
 class BCTrainer:
@@ -145,7 +153,8 @@ class BCTrainer:
 
         # Datasets (file-level split)
         train_dataset, val_dataset = load_datasets(
-            npz_paths, val_ratio=cfg.val_ratio, seed=cfg.seed
+            npz_paths, val_ratio=cfg.val_ratio, seed=cfg.seed,
+            augment=cfg.augment,
         )
         noop_count, action_count = train_dataset.action_class_counts()
         val_noop, val_action = val_dataset.action_class_counts()
@@ -191,12 +200,15 @@ class BCTrainer:
         # Card head: standard CE (balanced across 4 cards)
         card_criterion = nn.CrossEntropyLoss()
 
-        # Position head: standard CE
-        position_criterion = nn.CrossEntropyLoss()
+        # Position head: CE with label smoothing to prevent mode collapse
+        position_criterion = nn.CrossEntropyLoss(
+            label_smoothing=cfg.label_smoothing
+        )
 
         print(
             f"Loss: Decomposed (play_weight={cfg.play_weight}, "
-            f"card=CE, position=CE)"
+            f"card=CE, position=CE[smooth={cfg.label_smoothing}], "
+            f"entropy_coeff={cfg.entropy_coeff})"
         )
 
         # Optimizer
@@ -272,6 +284,16 @@ class BCTrainer:
                     )
 
                 loss = loss_play + loss_card + loss_pos
+
+                # Entropy regularization on position head
+                if is_action.any() and cfg.entropy_coeff > 0:
+                    pos_log_probs = torch.log_softmax(
+                        pos_logits[is_action], dim=1
+                    )
+                    entropy = -(
+                        pos_log_probs.exp() * pos_log_probs
+                    ).sum(dim=1).mean()
+                    loss = loss - cfg.entropy_coeff * entropy
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -488,8 +510,20 @@ def main() -> None:
     parser.add_argument("--patience", type=int, default=15, help="Early stopping patience")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument(
-        "--play_weight", type=float, default=5.0,
-        help="Weight for the 'play' class in play/noop head (default: 5.0)",
+        "--play_weight", type=float, default=10.0,
+        help="Weight for the 'play' class in play/noop head (default: 10.0)",
+    )
+    parser.add_argument(
+        "--entropy_coeff", type=float, default=0.01,
+        help="Entropy bonus coefficient for position head (default: 0.01)",
+    )
+    parser.add_argument(
+        "--label_smoothing", type=float, default=0.1,
+        help="Label smoothing for position CE loss (default: 0.1)",
+    )
+    parser.add_argument(
+        "--no_augment", action="store_true",
+        help="Disable horizontal flip data augmentation",
     )
     args = parser.parse_args()
 
@@ -507,6 +541,9 @@ def main() -> None:
         patience=args.patience,
         seed=args.seed,
         play_weight=args.play_weight,
+        entropy_coeff=args.entropy_coeff,
+        label_smoothing=args.label_smoothing,
+        augment=not args.no_augment,
     )
     trainer = BCTrainer(config)
     trainer.train_loop(npz_paths, args.output_dir)

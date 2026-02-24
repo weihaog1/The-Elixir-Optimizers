@@ -29,6 +29,7 @@ import json
 import os
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -87,6 +88,10 @@ class LiveConfig:
     confidence_threshold: float = 0.0
     action_cooldown: float = 0.5
     max_actions_per_minute: int = 20
+    temperature: float = 1.5
+    noop_frames_after_play: int = 0  # 0 = auto-calculate from rate limit
+    repeat_penalty: float = 2.0
+    repeat_memory: int = 5
 
     # --- Safety ---
     dry_run: bool = False
@@ -189,6 +194,9 @@ class GameCapture:
             windows = gw.getWindowsWithTitle(self._config.window_title)
             if windows:
                 w = windows[0]
+                # Store native window handle for focus detection
+                if hasattr(w, "_hWnd"):
+                    self._hwnd = w._hWnd
                 # Prefer client area (excludes title bar / borders)
                 client = self._get_client_region(w)
                 if client:
@@ -236,6 +244,10 @@ class GameCapture:
         except Exception:
             pass
         return None
+
+    def get_window_hwnd(self) -> Optional[int]:
+        """Return the native window handle (HWND) if available."""
+        return getattr(self, "_hwnd", None)
 
     def capture(self) -> np.ndarray:
         """Capture a single frame. Returns BGR numpy array."""
@@ -493,6 +505,7 @@ class PerceptionAdapter:
                 "confidence": det.confidence,
                 "class_name": det.class_name,
                 "unit_type": unit_type,
+                "_row": row,
             })
 
         # Vector features with mid-game defaults
@@ -503,9 +516,17 @@ class PerceptionAdapter:
         vector[0, 9] = 1.0    # player tower count / 3
         vector[0, 10] = 1.0   # enemy tower count / 3
 
+        # Count enemy units (non-tower, non-spell, top half of arena)
+        enemy_count = sum(
+            1 for d in detection_dicts
+            if d["unit_type"] in ("ground", "flying")
+            and d.get("_row", 0) < 16
+        )
+
         # Card classification (if CardPredictor available)
+        card_names: list[str] = ["", "", "", ""]
         if self._card_predictor is not None:
-            self._populate_card_vector(frame, vector, fw, fh)
+            card_names = self._populate_card_vector(frame, vector, fw, fh)
         else:
             vector[0, 11:15] = 1.0  # assume all 4 cards present
 
@@ -519,18 +540,24 @@ class PerceptionAdapter:
             "mask": torch.from_numpy(mask).bool().unsqueeze(0),
             "detections": detection_dicts,
             "perception_active": True,
+            "enemy_count": enemy_count,
+            "card_names": card_names,
         }
 
     def _populate_card_vector(
         self, frame: np.ndarray, vector: np.ndarray, fw: int, fh: int
-    ) -> None:
+    ) -> list[str]:
         """Crop 4 card slots from frame and classify each.
 
         Populates vector indices:
           [11-14] card present (1.0 if classified)
           [15-18] card class index / (NUM_DECK_CARDS - 1)
           [19-22] card elixir cost / MAX_ELIXIR
+
+        Returns:
+            List of 4 card class names (empty string if unclassified).
         """
+        card_names: list[str] = ["", "", "", ""]
         x_scale = fw / _BASE_W
         y_scale = fh / _BASE_H
 
@@ -555,6 +582,8 @@ class PerceptionAdapter:
             except Exception:
                 continue
 
+            card_names[i] = class_name
+
             # Card present
             vector[0, 11 + i] = 1.0
 
@@ -567,6 +596,8 @@ class PerceptionAdapter:
             if self._card_elixir_cost is not None:
                 cost = self._card_elixir_cost.get(class_name, 0)
                 vector[0, 19 + i] = cost / self._max_elixir
+
+        return card_names
 
 
 # ---------------------------------------------------------------------------
@@ -581,12 +612,13 @@ class ActionDispatcher:
     PyAutoGUI clicks land in the correct spot.
     """
 
-    def __init__(self, config: LiveConfig) -> None:
+    def __init__(self, config: LiveConfig, game_hwnd: Optional[int] = None) -> None:
         self._config = config
         self._frame_w = config.frame_w
         self._frame_h = config.frame_h
         self._window_left = config.window_left
         self._window_top = config.window_top
+        self._game_hwnd = game_hwnd
         self._last_action_time = 0.0
         self._actions_this_minute = 0
         self._minute_start = time.time()
@@ -607,6 +639,17 @@ class ActionDispatcher:
         """Update window position (call if window moves)."""
         self._window_left = left
         self._window_top = top
+
+    def _is_game_focused(self) -> bool:
+        """Check if the game window is the current foreground window."""
+        if sys.platform != "win32" or self._game_hwnd is None:
+            return True  # assume yes on non-Windows or unknown HWND
+        try:
+            import ctypes
+            fg = ctypes.windll.user32.GetForegroundWindow()
+            return fg == self._game_hwnd
+        except Exception:
+            return True
 
     def execute(self, action_idx: int, logit_score: float) -> dict:
         """Execute an action with safety checks.
@@ -652,6 +695,11 @@ class ActionDispatcher:
             self._minute_start = now
         if self._actions_this_minute >= self._config.max_actions_per_minute:
             result["reason"] = "rate_limited"
+            return result
+
+        # Window focus check
+        if not self._is_game_focused():
+            result["reason"] = "window_not_focused"
             return result
 
         # Dry run
@@ -722,7 +770,12 @@ class LiveInferenceEngine:
         self._perception = PerceptionAdapter(config, project_root)
 
         print("[Engine] Initializing action dispatcher...")
-        self._dispatcher = ActionDispatcher(config)
+        game_hwnd = self._capture.get_window_hwnd()
+        self._dispatcher = ActionDispatcher(config, game_hwnd=game_hwnd)
+        if game_hwnd:
+            print(f"[Engine] Window focus detection: enabled (HWND={game_hwnd})")
+        else:
+            print("[Engine] Window focus detection: disabled (no HWND)")
 
         # Sync window offset from capture to dispatcher
         wl, wt = self._capture.get_window_offset()
@@ -756,10 +809,27 @@ class LiveInferenceEngine:
         self._dispatcher._frame_w = gw
         self._dispatcher._frame_h = gh
 
+        # Auto-calibrate noop frames to rate limit
+        if config.noop_frames_after_play == 0:
+            import math
+            frames_per_action = math.ceil(
+                config.capture_fps * 60 / max(config.max_actions_per_minute, 1)
+            )
+            config.noop_frames_after_play = max(frames_per_action - 1, 1)
+            print(f"[Engine] Auto noop frames: {config.noop_frames_after_play} "
+                  f"(from {config.capture_fps} FPS / "
+                  f"{config.max_actions_per_minute} APM)")
+
         # Session stats
         self._frame_count = 0
         self._action_count = 0
         self._noop_count = 0
+
+        # Inference diversity state
+        self._noop_cooldown = 0  # frames remaining before next prediction
+        self._recent_actions: deque[int] = deque(
+            maxlen=config.repeat_memory
+        )
         self._start_time: Optional[float] = None
 
     @staticmethod
@@ -821,6 +891,10 @@ class LiveInferenceEngine:
         print(f"  Perception:   {self._perception.perception_active}")
         print(f"  Confidence:   {self._config.confidence_threshold}")
         print(f"  Cooldown:     {self._config.action_cooldown}s")
+        print(f"  Temperature:  {self._config.temperature}")
+        print(f"  Noop frames:  {self._config.noop_frames_after_play}")
+        print(f"  Repeat pen:   {self._config.repeat_penalty} "
+              f"(memory={self._config.repeat_memory})")
         print(f"  Capture FPS:  {self._config.capture_fps}")
         print(f"  Game size:    {self._game_w}x{self._game_h}")
         print(f"  Capture size: {self._capture_w}x{self._capture_h}")
@@ -851,6 +925,20 @@ class LiveInferenceEngine:
             self._game_x_offset:self._game_x_offset + self._game_w,
         ]
 
+        # 1b. Noop forcing — wait after a card play to simulate elixir regen
+        if self._noop_cooldown > 0:
+            self._noop_cooldown -= 1
+            action_idx = _NOOP_ACTION
+            logit_score = 0.0
+            exec_result = {"action_idx": action_idx, "logit_score": 0.0,
+                           "executed": False, "reason": "noop_cooldown"}
+            self._noop_count += 1
+            step_time = time.time() - step_start
+            perception_result = {"detections": [], "perception_active":
+                                 self._perception.perception_active}
+            self._log_step(step_time, exec_result, perception_result)
+            return
+
         # 2. Perception -> obs tensors
         perception_result = self._perception.process_frame(frame)
         obs = perception_result["obs"]
@@ -864,17 +952,42 @@ class LiveInferenceEngine:
         }
         mask_device = mask.to(device)
 
-        # 4. Predict
+        # 4. Predict with temperature sampling and repeat penalty
         with torch.no_grad():
             logits = self._policy.forward(obs_device)  # (1, 2305)
-            # Apply mask
+
+            # Apply action mask
             masked_logits = logits.clone()
             if mask_device.dim() == 2:
                 masked_logits[~mask_device] = float("-inf")
             else:
                 masked_logits[0, ~mask_device] = float("-inf")
 
-            action_idx = masked_logits.argmax(dim=1).item()
+            # Spell masking — block spell cards when no enemies detected
+            enemy_count = perception_result.get("enemy_count", -1)
+            card_names = perception_result.get("card_names", [])
+            if enemy_count == 0 and card_names and self._perception._unit_type_map:
+                for slot_idx, cname in enumerate(card_names):
+                    if cname and self._perception._unit_type_map.get(
+                        cname, "ground"
+                    ) == "spell":
+                        start = slot_idx * _GRID_CELLS
+                        end = start + _GRID_CELLS
+                        masked_logits[0, start:end] = float("-inf")
+
+            # Repeat penalty — discourage recently-used actions
+            if self._config.repeat_penalty > 0 and self._recent_actions:
+                for prev_action in self._recent_actions:
+                    if masked_logits[0, prev_action] > float("-inf"):
+                        masked_logits[0, prev_action] -= (
+                            self._config.repeat_penalty
+                        )
+
+            # Temperature-scaled sampling (or argmax when temp ≈ 0)
+            temp = max(self._config.temperature, 0.01)
+            scaled = masked_logits / temp
+            probs = torch.softmax(scaled, dim=1)
+            action_idx = torch.multinomial(probs, 1).item()
             logit_score = masked_logits[0, action_idx].item()
 
         # 5. Execute
@@ -882,6 +995,8 @@ class LiveInferenceEngine:
 
         if exec_result.get("executed", False):
             self._action_count += 1
+            self._recent_actions.append(action_idx)
+            self._noop_cooldown = self._config.noop_frames_after_play
         elif exec_result["reason"] == "noop":
             self._noop_count += 1
 

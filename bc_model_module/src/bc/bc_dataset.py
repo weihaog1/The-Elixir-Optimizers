@@ -13,7 +13,12 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from src.encoder.encoder_constants import ACTION_SPACE_SIZE, NOOP_ACTION
+from src.encoder.encoder_constants import (
+    ACTION_SPACE_SIZE,
+    GRID_CELLS,
+    GRID_COLS,
+    NOOP_ACTION,
+)
 
 
 class BCDataset(Dataset):
@@ -26,11 +31,17 @@ class BCDataset(Dataset):
         - actions: (N,) int64
         - masks: (N, 2305) bool
 
+    When ``augment=True``, the dataset doubles its effective size by
+    providing horizontally-flipped copies for indices >= N. The arena
+    columns are reversed, and action/mask indices are remapped so that
+    ``col`` becomes ``GRID_COLS - 1 - col``.
+
     Args:
         npz_paths: List of Path objects pointing to .npz files.
+        augment: If True, enable horizontal flip augmentation (2x data).
     """
 
-    def __init__(self, npz_paths: list[Path]) -> None:
+    def __init__(self, npz_paths: list[Path], augment: bool = False) -> None:
         super().__init__()
         arenas = []
         vectors = []
@@ -49,11 +60,38 @@ class BCDataset(Dataset):
         self.actions = np.concatenate(actions, axis=0)
         self.masks = np.concatenate(masks, axis=0)
 
+        self._augment = augment
+        self._n_real = len(self.actions)
+
+        if augment:
+            # Precompute index mapping for horizontal flip.
+            # For each action index i: card*576 + row*18 + col
+            #   -> card*576 + row*18 + (17 - col)
+            # Noop (2304) maps to itself.
+            # Since flip is self-inverse, this array works as both
+            # forward and inverse mapping.
+            flip = np.empty(ACTION_SPACE_SIZE, dtype=np.int64)
+            for i in range(ACTION_SPACE_SIZE - 1):
+                card = i // GRID_CELLS
+                cell = i % GRID_CELLS
+                row = cell // GRID_COLS
+                col = cell % GRID_COLS
+                flipped_col = GRID_COLS - 1 - col
+                flip[i] = card * GRID_CELLS + row * GRID_COLS + flipped_col
+            flip[NOOP_ACTION] = NOOP_ACTION
+            self._flip_indices = flip
+
     def __len__(self) -> int:
-        return len(self.actions)
+        if self._augment:
+            return 2 * self._n_real
+        return self._n_real
 
     def __getitem__(self, idx: int) -> dict:
         """Get a single training sample.
+
+        For indices >= N (when augment=True), returns a horizontally-
+        flipped version: arena columns reversed, action and mask indices
+        remapped.
 
         Returns:
             Dict with keys:
@@ -62,6 +100,24 @@ class BCDataset(Dataset):
                 "action": scalar long tensor
                 "mask": (2305,) bool tensor
         """
+        if self._augment and idx >= self._n_real:
+            real_idx = idx - self._n_real
+            # Flip arena columns (axis 1 of shape 32,18,6)
+            arena = self.arenas[real_idx][:, ::-1, :].copy()
+            vector = self.vectors[real_idx]
+            action = int(self.actions[real_idx])
+            # Remap action index
+            if action != NOOP_ACTION:
+                action = int(self._flip_indices[action])
+            # Remap mask using the flip permutation
+            mask = self.masks[real_idx][self._flip_indices].copy()
+            return {
+                "arena": torch.from_numpy(arena).float(),
+                "vector": torch.from_numpy(vector.copy()).float(),
+                "action": torch.tensor(action, dtype=torch.long),
+                "mask": torch.from_numpy(mask).bool(),
+            }
+
         return {
             "arena": torch.from_numpy(self.arenas[idx]).float(),
             "vector": torch.from_numpy(self.vectors[idx]).float(),
@@ -106,6 +162,7 @@ def load_datasets(
     npz_paths: list[Path],
     val_ratio: float = 0.2,
     seed: int = 42,
+    augment: bool = False,
 ) -> tuple[BCDataset, BCDataset]:
     """Split .npz files into train and validation datasets.
 
@@ -116,6 +173,7 @@ def load_datasets(
         npz_paths: List of paths to .npz files.
         val_ratio: Fraction of files for validation (default 0.2).
         seed: Random seed for reproducible splitting.
+        augment: Enable horizontal flip augmentation on training set.
 
     Returns:
         (train_dataset, val_dataset) tuple of BCDataset instances.
@@ -132,4 +190,5 @@ def load_datasets(
     if len(val_paths) == 0 and len(paths) >= 2:
         val_paths = [train_paths.pop()]
 
-    return BCDataset(train_paths), BCDataset(val_paths)
+    # Augmentation only on training set (validation stays clean)
+    return BCDataset(train_paths, augment=augment), BCDataset(val_paths)
