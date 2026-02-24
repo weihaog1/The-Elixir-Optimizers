@@ -265,35 +265,54 @@ class BCTrainer:
                 )
 
                 # Forward through decomposed heads
-                play_logits, card_logits, pos_logits = (
+                play_logits, card_logits, pos_per_card = (
                     policy.forward_decomposed(obs)
                 )
 
                 # Loss 1: play/noop on ALL frames
                 loss_play = play_criterion(play_logits, play_tgt)
 
-                # Loss 2 & 3: card/position ONLY on action frames
+                # Loss 2: card ONLY on action frames
                 loss_card = torch.tensor(0.0, device=device)
-                loss_pos = torch.tensor(0.0, device=device)
                 if is_action.any():
                     loss_card = card_criterion(
                         card_logits[is_action], card_tgt[is_action]
                     )
-                    loss_pos = position_criterion(
-                        pos_logits[is_action], pos_tgt[is_action]
-                    )
+
+                # Loss 3: per-card position loss on action frames
+                loss_pos = torch.tensor(0.0, device=device)
+                pos_loss_count = 0
+                if is_action.any():
+                    for card_id in range(NUM_CARD_SLOTS):
+                        card_mask = card_tgt[is_action] == card_id
+                        if card_mask.any():
+                            loss_pos = loss_pos + position_criterion(
+                                pos_per_card[card_id][is_action][card_mask],
+                                pos_tgt[is_action][card_mask],
+                            )
+                            pos_loss_count += 1
+                    if pos_loss_count > 0:
+                        loss_pos = loss_pos / pos_loss_count
 
                 loss = loss_play + loss_card + loss_pos
 
-                # Entropy regularization on position head
+                # Entropy regularization on per-card position heads
                 if is_action.any() and cfg.entropy_coeff > 0:
-                    pos_log_probs = torch.log_softmax(
-                        pos_logits[is_action], dim=1
-                    )
-                    entropy = -(
-                        pos_log_probs.exp() * pos_log_probs
-                    ).sum(dim=1).mean()
-                    loss = loss - cfg.entropy_coeff * entropy
+                    entropy_sum = torch.tensor(0.0, device=device)
+                    entropy_count = 0
+                    for card_id in range(NUM_CARD_SLOTS):
+                        card_mask = card_tgt[is_action] == card_id
+                        if card_mask.any():
+                            pos_log_probs = torch.log_softmax(
+                                pos_per_card[card_id][is_action][card_mask],
+                                dim=1,
+                            )
+                            entropy_sum = entropy_sum - (
+                                pos_log_probs.exp() * pos_log_probs
+                            ).sum(dim=1).mean()
+                            entropy_count += 1
+                    if entropy_count > 0:
+                        loss = loss - cfg.entropy_coeff * entropy_sum / entropy_count
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -342,25 +361,42 @@ class BCTrainer:
                     play_tgt, card_tgt, pos_tgt, is_action = (
                         self._decompose_action(actions)
                     )
-                    play_l, card_l, pos_l = policy.forward_decomposed(obs)
+                    play_l, card_l, pos_per_card = (
+                        policy.forward_decomposed(obs)
+                    )
 
-                    # Decomposed validation loss
+                    # Decomposed validation loss (per-card position)
                     loss = play_criterion(play_l, play_tgt)
                     if is_action.any():
+                        vl_pos = torch.tensor(0.0, device=device)
+                        vl_count = 0
+                        for card_id in range(NUM_CARD_SLOTS):
+                            card_mask = card_tgt[is_action] == card_id
+                            if card_mask.any():
+                                vl_pos = vl_pos + position_criterion(
+                                    pos_per_card[card_id][is_action][card_mask],
+                                    pos_tgt[is_action][card_mask],
+                                )
+                                vl_count += 1
+                        if vl_count > 0:
+                            vl_pos = vl_pos / vl_count
                         loss = loss + card_criterion(
                             card_l[is_action], card_tgt[is_action]
-                        ) + position_criterion(
-                            pos_l[is_action], pos_tgt[is_action]
-                        )
+                        ) + vl_pos
 
                     # Predictions using decomposed heads directly
-                    # Play decision: argmax of binary head
                     play_preds = play_l.argmax(dim=1)  # 0=noop, 1=play
                     is_action_pred_play = play_preds == 1
 
-                    # Full action predictions
+                    # Full action predictions with card-specific positions
                     pred_card = card_l.argmax(dim=1)   # (B,)
-                    pred_pos = pos_l.argmax(dim=1)     # (B,)
+                    pred_pos = torch.zeros_like(pred_card)
+                    for card_id in range(NUM_CARD_SLOTS):
+                        card_mask = pred_card == card_id
+                        if card_mask.any():
+                            pred_pos[card_mask] = (
+                                pos_per_card[card_id][card_mask].argmax(dim=1)
+                            )
                     preds = torch.where(
                         is_action_pred_play,
                         pred_card * GRID_CELLS + pred_pos,

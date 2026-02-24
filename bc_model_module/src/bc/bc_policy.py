@@ -5,7 +5,7 @@ head that decomposes the 2305-class problem into three manageable sub-problems:
 
 1. Play head: binary (play a card vs no-op)
 2. Card head: 4-way (which card slot)
-3. Position head: 576-way (which grid cell)
+3. Position head: FiLM-conditioned 576-way (which grid cell, per-card)
 
 This decomposition is critical because the flat 2305-way softmax collapses
 to always-noop with imbalanced data (547 actions across 2304 classes = 0.24
@@ -71,30 +71,59 @@ class BCPolicy(nn.Module):
         # Head 2: Which card (4-way)
         self.card_head = nn.Linear(hidden_dim, NUM_CARD_SLOTS)
 
-        # Head 3: Where to play (576-way grid position)
-        self.position_head = nn.Linear(hidden_dim, GRID_CELLS)
+        # Head 3: FiLM-conditioned position head
+        # Card embedding modulates position features via scale/shift,
+        # so each card gets different position preferences while sharing
+        # the same underlying spatial layers.
+        _film_embed_dim = 16
+        _pos_hidden = 128
+        self.card_position_embed = nn.Embedding(NUM_CARD_SLOTS, _film_embed_dim)
+        self.film_gamma = nn.Linear(_film_embed_dim, _pos_hidden)
+        self.film_beta = nn.Linear(_film_embed_dim, _pos_hidden)
+        self.position_trunk = nn.Linear(hidden_dim, _pos_hidden)
+        self.position_out = nn.Linear(_pos_hidden, GRID_CELLS)
+
+        # Init FiLM to identity transform (gamma=1, beta=0)
+        nn.init.zeros_(self.film_gamma.weight)
+        nn.init.ones_(self.film_gamma.bias)
+        nn.init.zeros_(self.film_beta.weight)
+        nn.init.zeros_(self.film_beta.bias)
 
     def forward_decomposed(
         self, obs: dict[str, torch.Tensor]
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Forward pass returning decomposed logits.
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[int, torch.Tensor]]:
+        """Forward pass returning decomposed logits with per-card positions.
 
         Args:
             obs: Dict with "arena" (B, 32, 18, 6) and "vector" (B, 23).
 
         Returns:
-            Tuple of (play_logits, card_logits, position_logits):
+            Tuple of (play_logits, card_logits, pos_logits_per_card):
                 - play_logits: (B, 2) - [noop, play]
                 - card_logits: (B, 4) - card slot selection
-                - position_logits: (B, 576) - grid cell selection
+                - pos_logits_per_card: dict mapping card_id -> (B, 576)
         """
         features = self.feature_extractor(obs)
         shared = self.shared_trunk(features)
-        return (
-            self.play_head(shared),
-            self.card_head(shared),
-            self.position_head(shared),
-        )
+
+        play_logits = self.play_head(shared)
+        card_logits = self.card_head(shared)
+
+        # FiLM-conditioned position logits per card
+        pos_hidden = self.position_trunk(shared)  # (B, 128)
+        pos_logits_per_card: dict[int, torch.Tensor] = {}
+        for card_id in range(NUM_CARD_SLOTS):
+            card_emb = self.card_position_embed(
+                torch.tensor(card_id, device=shared.device)
+            )  # (16,)
+            gamma = self.film_gamma(card_emb)  # (128,)
+            beta = self.film_beta(card_emb)    # (128,)
+            modulated = gamma * pos_hidden + beta  # (B, 128)
+            pos_logits_per_card[card_id] = self.position_out(
+                torch.relu(modulated)
+            )  # (B, 576)
+
+        return play_logits, card_logits, pos_logits_per_card
 
     def forward(self, obs: dict[str, torch.Tensor]) -> torch.Tensor:
         """Forward pass returning flat 2305 logits (backward compatible).
@@ -109,7 +138,7 @@ class BCPolicy(nn.Module):
         Returns:
             (B, 2305) raw logits (pre-softmax).
         """
-        play_logits, card_logits, position_logits = self.forward_decomposed(obs)
+        play_logits, card_logits, pos_per_card = self.forward_decomposed(obs)
 
         B = play_logits.size(0)
         flat_logits = torch.zeros(B, ACTION_SPACE_SIZE, device=play_logits.device)
@@ -117,19 +146,16 @@ class BCPolicy(nn.Module):
         # Noop logit = play_logits[:, 0] (the "don't play" score)
         flat_logits[:, NOOP_ACTION] = play_logits[:, 0]
 
-        # Card placement logits = play_score + card_score + position_score
-        # This additive decomposition means each placement action's logit
-        # is the sum of its component scores.
+        # Card placement logits = play_score + card_score + card-specific position_score
         play_action_score = play_logits[:, 1]  # (B,)
         for card_id in range(NUM_CARD_SLOTS):
             card_score = card_logits[:, card_id]  # (B,)
             start_idx = card_id * GRID_CELLS
             end_idx = start_idx + GRID_CELLS
-            # (B, 576) = play(B,1) + card(B,1) + position(B,576)
             flat_logits[:, start_idx:end_idx] = (
                 play_action_score.unsqueeze(1)
                 + card_score.unsqueeze(1)
-                + position_logits
+                + pos_per_card[card_id]
             )
 
         return flat_logits
@@ -158,7 +184,7 @@ class BCPolicy(nn.Module):
         if mask.dim() == 1:
             mask = mask.unsqueeze(0)
 
-        play_logits, card_logits, pos_logits = self.forward_decomposed(obs)
+        play_logits, card_logits, pos_per_card = self.forward_decomposed(obs)
 
         # Check if ANY card placement is valid
         any_card_valid = mask[0, :NOOP_ACTION].any()
@@ -176,7 +202,7 @@ class BCPolicy(nn.Module):
                 card_logits[0, card_id] = float("-inf")
 
         best_card = card_logits[0].argmax().item()
-        best_pos = pos_logits[0].argmax().item()
+        best_pos = pos_per_card[best_card][0].argmax().item()
         return best_card * GRID_CELLS + best_pos
 
     @torch.no_grad()
@@ -194,7 +220,7 @@ class BCPolicy(nn.Module):
         if mask.dim() == 1:
             mask = mask.unsqueeze(0)
 
-        play_logits, card_logits, pos_logits = self.forward_decomposed(obs)
+        play_logits, card_logits, pos_per_card = self.forward_decomposed(obs)
 
         play_probs = torch.softmax(play_logits[0], dim=0)
         play_prob = play_probs[1].item()  # probability of "play"
@@ -211,10 +237,9 @@ class BCPolicy(nn.Module):
                 card_logits[0, card_id] = float("-inf")
 
         card_probs = torch.softmax(card_logits[0], dim=0)
-        pos_probs = torch.softmax(pos_logits[0], dim=0)
-
         best_card = card_logits[0].argmax().item()
-        best_pos = pos_logits[0].argmax().item()
+        pos_probs = torch.softmax(pos_per_card[best_card][0], dim=0)
+        best_pos = pos_per_card[best_card][0].argmax().item()
         card_prob = card_probs[best_card].item()
         pos_prob = pos_probs[best_pos].item()
 
@@ -236,6 +261,10 @@ class BCPolicy(nn.Module):
     def load(cls, path: str, **kwargs) -> "BCPolicy":
         """Load a saved policy checkpoint.
 
+        Backward-compatible: detects old checkpoints with shared
+        position_head and loads them with strict=False (FiLM layers
+        will use their identity-initialized defaults).
+
         Args:
             path: Path to the .pt checkpoint file.
             **kwargs: Constructor arguments (features_dim, hidden_dim, dropout).
@@ -244,8 +273,17 @@ class BCPolicy(nn.Module):
             BCPolicy instance with loaded weights in eval mode.
         """
         policy = cls(**kwargs)
-        policy.load_state_dict(
-            torch.load(path, map_location="cpu", weights_only=True)
-        )
+        state = torch.load(path, map_location="cpu", weights_only=True)
+
+        # Detect old checkpoint (has position_head.* but not film_gamma.*)
+        if "position_head.weight" in state and "film_gamma.weight" not in state:
+            state = {
+                k: v for k, v in state.items()
+                if not k.startswith("position_head.")
+            }
+            policy.load_state_dict(state, strict=False)
+        else:
+            policy.load_state_dict(state)
+
         policy.eval()
         return policy
