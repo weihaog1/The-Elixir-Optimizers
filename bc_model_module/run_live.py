@@ -181,8 +181,8 @@ def parse_args():
     parser.add_argument(
         "--temperature",
         type=float,
-        default=1.5,
-        help="Sampling temperature (>1 = more diverse, <1 = more greedy, default: 1.5)",
+        default=1.0,
+        help="Sampling temperature (>1 = more diverse, <1 = more greedy, default: 1.0)",
     )
     parser.add_argument(
         "--noop-frames",
@@ -193,8 +193,8 @@ def parse_args():
     parser.add_argument(
         "--repeat-penalty",
         type=float,
-        default=2.0,
-        help="Logit penalty for recently-used actions (default: 2.0)",
+        default=0.5,
+        help="Logit penalty for recently-used actions (default: 0.5)",
     )
     parser.add_argument(
         "--repeat-memory",

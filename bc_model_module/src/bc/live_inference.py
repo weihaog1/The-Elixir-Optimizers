@@ -88,9 +88,9 @@ class LiveConfig:
     confidence_threshold: float = 0.0
     action_cooldown: float = 0.5
     max_actions_per_minute: int = 20
-    temperature: float = 1.5
+    temperature: float = 1.0
     noop_frames_after_play: int = 0  # 0 = auto-calculate from rate limit
-    repeat_penalty: float = 2.0
+    repeat_penalty: float = 0.5
     repeat_memory: int = 5
 
     # --- Safety ---
@@ -963,10 +963,12 @@ class LiveInferenceEngine:
             else:
                 masked_logits[0, ~mask_device] = float("-inf")
 
-            # Spell masking — block spell cards when no enemies detected
-            enemy_count = perception_result.get("enemy_count", -1)
+            # Spell masking — block spell cards when arena is empty
+            # Use total detection count (not just enemies) since YOLO
+            # detection is unreliable and enemy_count==0 triggers too often
+            total_detections = len(perception_result.get("detections", []))
             card_names = perception_result.get("card_names", [])
-            if enemy_count == 0 and card_names and self._perception._unit_type_map:
+            if total_detections == 0 and card_names and self._perception._unit_type_map:
                 for slot_idx, cname in enumerate(card_names):
                     if cname and self._perception._unit_type_map.get(
                         cname, "ground"
