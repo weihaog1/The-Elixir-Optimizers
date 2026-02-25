@@ -49,6 +49,8 @@ class CRMetricsCallback(BaseCallback):
         self._episode_lengths: deque[int] = deque(maxlen=window_size)
 
         self._total_episodes = 0
+        self._anomaly_count = 0
+        self._truncation_count = 0
 
     def _on_training_start(self) -> None:
         if self._log_path:
@@ -59,6 +61,12 @@ class CRMetricsCallback(BaseCallback):
         # Check if any environment reported episode completion
         infos = self.locals.get("infos", [])
         for info in infos:
+            # Track anomalies per step (even if episode doesn't end)
+            if info.get("anomaly_detected", False):
+                self._anomaly_count += 1
+            if info.get("truncation_reason"):
+                self._truncation_count += 1
+
             if "outcome" in info or "episode_length" in info:
                 self._record_episode(info)
         return True
@@ -95,8 +103,13 @@ class CRMetricsCallback(BaseCallback):
             self.logger.record("cr/episode_length", ep_length)
             self.logger.record("cr/avg_episode_length", avg_length)
             self.logger.record("cr/total_episodes", self._total_episodes)
+            self.logger.record("cr/anomaly_count", self._anomaly_count)
+            self.logger.record("cr/truncation_count", self._truncation_count)
 
         # Log to JSONL
+        anomaly = info.get("anomaly_detected", False)
+        truncation_reason = info.get("truncation_reason", "")
+
         entry = {
             "episode": self._total_episodes,
             "outcome": outcome,
@@ -106,6 +119,8 @@ class CRMetricsCallback(BaseCallback):
             "win_rate": round(win_rate, 3),
             "avg_reward": round(avg_reward, 3),
             "timestep": self.num_timesteps,
+            "anomaly_detected": anomaly,
+            "truncation_reason": truncation_reason,
         }
         if self._log_file is not None:
             self._log_file.write(json.dumps(entry) + "\n")

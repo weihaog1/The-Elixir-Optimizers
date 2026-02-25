@@ -57,6 +57,59 @@ class TestGamePhaseDetector:
         assert result is None or isinstance(result, str)
 
 
+class TestPhaseStability:
+    """Test phase detection stability fix (Layer 3)."""
+
+    def test_confirmed_phase_does_not_change_on_first_new_frame(self):
+        """A single frame of a new phase should NOT change confirmed output."""
+        detector = GamePhaseDetector()
+        # Feed 5 IN_GAME frames to establish confirmed phase
+        in_game_frame = np.zeros((960, 540, 3), dtype=np.uint8)
+        in_game_frame[50:750, :, :] = np.random.randint(30, 200, (700, 540, 3), dtype=np.uint8)
+        in_game_frame[770:920, :, :] = 150
+
+        for _ in range(5):
+            detector.detect_phase(in_game_frame)
+        assert detector._confirmed_phase == Phase.IN_GAME
+
+        # Feed 1 dark/loading frame — confirmed should still be IN_GAME
+        loading_frame = np.full((960, 540, 3), 5, dtype=np.uint8)
+        phase = detector.detect_phase(loading_frame)
+        assert phase == Phase.IN_GAME  # Debounced — not changed yet
+
+    def test_in_game_to_loading_triggers_end_screen(self):
+        """IN_GAME -> LOADING transition should return END_SCREEN."""
+        detector = GamePhaseDetector()
+        # Establish IN_GAME
+        in_game_frame = np.zeros((960, 540, 3), dtype=np.uint8)
+        in_game_frame[50:750, :, :] = np.random.randint(30, 200, (700, 540, 3), dtype=np.uint8)
+        in_game_frame[770:920, :, :] = 150
+
+        for _ in range(5):
+            detector.detect_phase(in_game_frame)
+        assert detector._confirmed_phase == Phase.IN_GAME
+        assert detector._was_ever_in_game is True
+
+        # Feed enough LOADING frames to trigger transition
+        loading_frame = np.full((960, 540, 3), 5, dtype=np.uint8)
+        for _ in range(5):
+            phase = detector.detect_phase(loading_frame)
+
+        # Should detect as END_SCREEN (missed end screen transition)
+        assert phase == Phase.END_SCREEN
+
+    def test_reset_clears_new_fields(self):
+        """reset() should clear confirmed phase and was_ever_in_game."""
+        detector = GamePhaseDetector()
+        detector._confirmed_phase = Phase.IN_GAME
+        detector._was_ever_in_game = True
+        detector._prev_confirmed_phase = Phase.LOADING
+        detector.reset()
+        assert detector._confirmed_phase == Phase.UNKNOWN
+        assert detector._was_ever_in_game is False
+        assert detector._prev_confirmed_phase == Phase.UNKNOWN
+
+
 class TestEnvConfig:
     """Test EnvConfig defaults."""
 
@@ -67,6 +120,11 @@ class TestEnvConfig:
         assert config.dry_run is False
         assert config.step_timeout == 5.0
         assert config.identical_frame_limit == 5
+
+    def test_max_episode_steps_default(self):
+        from src.ppo.clash_royale_env import EnvConfig
+        config = EnvConfig()
+        assert config.max_episode_steps == 700
 
 
 class TestRewardIntegration:

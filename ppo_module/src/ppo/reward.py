@@ -32,6 +32,8 @@ class RewardConfig:
     survival_bonus: float = 0.02
     elixir_waste_penalty: float = -0.05
     elixir_waste_threshold: float = 0.95  # 9.5/10 elixir
+    reward_clamp: float = 15.0  # Per-step non-terminal reward ceiling
+    tower_jump_threshold: float = 0.15  # Tower increase > this = new game anomaly
 
 
 class RewardComputer:
@@ -53,11 +55,30 @@ class RewardComputer:
         self.config = config or RewardConfig()
         self._prev_ally_towers: Optional[float] = None
         self._prev_enemy_towers: Optional[float] = None
+        self.new_game_detected: bool = False
 
     def reset(self) -> None:
         """Reset state for a new episode."""
         self._prev_ally_towers = None
         self._prev_enemy_towers = None
+        self.new_game_detected = False
+
+    def _detect_new_game_anomaly(
+        self,
+        prev_ally: float,
+        curr_ally: float,
+        prev_enemy: float,
+        curr_enemy: float,
+    ) -> bool:
+        """Detect if a new game started mid-episode.
+
+        Tower counts only decrease in-game (towers get destroyed, never rebuilt).
+        If both jump UP significantly, a new game has started.
+        """
+        threshold = self.config.tower_jump_threshold
+        ally_jumped = (curr_ally - prev_ally) > threshold
+        enemy_jumped = (curr_enemy - prev_enemy) > threshold
+        return ally_jumped and enemy_jumped
 
     def compute(
         self,
@@ -86,12 +107,29 @@ class RewardComputer:
 
         reward = 0.0
         cfg = self.config
+        self.new_game_detected = False
 
         # --- Crown rewards (tower count changes) ---
         curr_enemy_towers = float(curr_vec[self._ENEMY_TOWER_COUNT_IDX])
         curr_ally_towers = float(curr_vec[self._ALLY_TOWER_COUNT_IDX])
         prev_enemy_towers = float(prev_vec[self._ENEMY_TOWER_COUNT_IDX])
         prev_ally_towers = float(prev_vec[self._ALLY_TOWER_COUNT_IDX])
+
+        # --- Anomaly detection: new game started mid-episode ---
+        if self._prev_ally_towers is not None and self._prev_enemy_towers is not None:
+            if self._detect_new_game_anomaly(
+                prev_ally_towers, curr_ally_towers,
+                prev_enemy_towers, curr_enemy_towers,
+            ):
+                self.new_game_detected = True
+                # Reset internal state — skip crown deltas, return survival only
+                self._prev_ally_towers = curr_ally_towers
+                self._prev_enemy_towers = curr_enemy_towers
+                return cfg.survival_bonus
+
+        # Track tower counts for anomaly detection on subsequent calls
+        self._prev_ally_towers = curr_ally_towers
+        self._prev_enemy_towers = curr_enemy_towers
 
         # Enemy tower count decreased = we scored a crown
         enemy_delta = prev_enemy_towers - curr_enemy_towers
@@ -111,7 +149,10 @@ class RewardComputer:
         if curr_elixir >= cfg.elixir_waste_threshold:
             reward += cfg.elixir_waste_penalty
 
-        # --- Terminal reward ---
+        # --- Clamp non-terminal reward ---
+        reward = max(-cfg.reward_clamp, min(cfg.reward_clamp, reward))
+
+        # --- Terminal reward (added AFTER clamping) ---
         if terminal_outcome == "win":
             reward += cfg.win_reward
         elif terminal_outcome == "loss":

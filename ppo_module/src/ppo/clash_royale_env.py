@@ -80,6 +80,9 @@ class EnvConfig:
     detector_config: DetectorConfig = field(default_factory=DetectorConfig)
     templates_dir: str = ""
 
+    # Episode limits
+    max_episode_steps: int = 700  # 300s game * 2 FPS = 600 + overtime margin
+
     # Timeouts
     step_timeout: float = 5.0  # Max seconds to wait for a frame
     identical_frame_limit: int = 5  # Truncate after N identical frames
@@ -309,7 +312,13 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._step_count += 1
         terminated = False
         truncated = False
+        truncation_reason = ""
         outcome = None
+
+        # Layer 1: Max episode length
+        if self._step_count >= self._config.max_episode_steps:
+            truncated = True
+            truncation_reason = "max_steps"
 
         # 1. Execute action
         exec_result = self._dispatcher.execute(action, logit_score=0.0)
@@ -331,6 +340,7 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         if self._identical_frame_count >= self._config.identical_frame_limit:
             truncated = True
+            truncation_reason = truncation_reason or "identical_frames"
             if self._config.verbose:
                 print(f"[Env] Truncated: {self._identical_frame_count} identical frames.")
 
@@ -366,6 +376,13 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._episode_reward += reward
         self._prev_obs = curr_obs
 
+        # Layer 2: Observation anomaly detection (new game started mid-episode)
+        anomaly_detected = self._reward_computer.new_game_detected
+        if anomaly_detected and not terminated:
+            terminated = True
+            if self._config.verbose:
+                print("[Env] Anomaly: tower counts jumped up — new game detected. Ending episode.")
+
         # 7. Build info dict
         info = {
             "step": self._step_count,
@@ -376,6 +393,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             "perception_active": perception_result.get("perception_active", False),
             "episode_reward": self._episode_reward,
             "cards_played": self._cards_played,
+            "anomaly_detected": anomaly_detected,
+            "truncation_reason": truncation_reason,
         }
         if outcome is not None:
             info["outcome"] = outcome

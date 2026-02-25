@@ -87,8 +87,13 @@ class GamePhaseDetector:
         templates_dir: str = "",
     ) -> None:
         self.config = config or DetectorConfig()
+        # Candidate tracking (raw, not yet debounced)
         self._phase = Phase.UNKNOWN
         self._phase_count = 0
+        # Debounced output (only changes after stability threshold)
+        self._confirmed_phase = Phase.UNKNOWN
+        self._prev_confirmed_phase = Phase.UNKNOWN
+        self._was_ever_in_game = False
         self._victory_template: Optional[np.ndarray] = None
         self._defeat_template: Optional[np.ndarray] = None
 
@@ -156,10 +161,27 @@ class GamePhaseDetector:
             self._phase = candidate
 
         if self._phase_count >= cfg.phase_stability_frames:
-            return self._phase
+            # Once END_SCREEN is latched (via transition), keep it until reset()
+            if self._confirmed_phase == Phase.END_SCREEN:
+                return self._confirmed_phase
 
-        # Return previous confirmed phase until stability threshold met
-        return self._phase
+            # Candidate is stable — promote to confirmed
+            self._prev_confirmed_phase = self._confirmed_phase
+            self._confirmed_phase = self._phase
+
+            if self._confirmed_phase == Phase.IN_GAME:
+                self._was_ever_in_game = True
+
+            # Transition detection: IN_GAME -> LOADING/UNKNOWN = missed end screen
+            if (
+                self._was_ever_in_game
+                and self._prev_confirmed_phase == Phase.IN_GAME
+                and self._confirmed_phase in (Phase.LOADING, Phase.UNKNOWN)
+            ):
+                self._confirmed_phase = Phase.END_SCREEN
+
+        # Always return the debounced confirmed phase
+        return self._confirmed_phase
 
     def detect_outcome(self, frame: np.ndarray) -> Optional[str]:
         """Detect win/loss/draw from the end-of-game screen.
@@ -301,3 +323,6 @@ class GamePhaseDetector:
         """Reset detector state for a new episode."""
         self._phase = Phase.UNKNOWN
         self._phase_count = 0
+        self._confirmed_phase = Phase.UNKNOWN
+        self._prev_confirmed_phase = Phase.UNKNOWN
+        self._was_ever_in_game = False

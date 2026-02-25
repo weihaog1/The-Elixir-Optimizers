@@ -107,6 +107,7 @@ class TestRewardComputer:
         cfg = RewardConfig(
             enemy_crown_reward=20.0,
             survival_bonus=0.0,
+            reward_clamp=25.0,  # High enough to not clip 20.0
         )
         rc = RewardComputer(cfg)
         obs1 = _make_obs(enemy_towers=1.0)
@@ -131,5 +132,108 @@ class TestRewardComputer:
         obs1 = _make_obs(enemy_towers=1.0 / 3.0)  # 1 tower left
         obs2 = _make_obs(enemy_towers=0.0)  # 0 towers (3-crown)
         reward = rc.compute(obs1, obs2, terminal_outcome="win")
-        # crown(10) + win(30) + survival(0.02) = 40.02
+        # crown(10) clamped to 15 max, then + win(30) + survival(0.02)
+        # non-terminal = 10 + 0.02 = 10.02, clamped to 10.02, then + 30 = 40.02
         assert reward == pytest.approx(40.02, abs=0.1)
+
+
+class TestAnomalyDetection:
+    """Test new-game anomaly detection (Layer 2)."""
+
+    def test_tower_jump_anomaly_detected(self):
+        """Both towers jumping from damaged to full = new game."""
+        rc = RewardComputer()
+        # First call: establish tower tracking state
+        obs1 = _make_obs(ally_towers=2.0 / 3.0, enemy_towers=2.0 / 3.0)
+        obs2 = _make_obs(ally_towers=2.0 / 3.0, enemy_towers=2.0 / 3.0)
+        rc.compute(obs1, obs2)
+
+        # Second call: towers jump back to 1.0 (new game)
+        obs3 = _make_obs(ally_towers=1.0, enemy_towers=1.0)
+        reward = rc.compute(obs2, obs3)
+
+        assert rc.new_game_detected is True
+        # Should return survival-only reward
+        assert reward == pytest.approx(0.02, abs=1e-6)
+
+    def test_single_tower_slight_increase_not_anomaly(self):
+        """Small noise in one tower should not trigger anomaly."""
+        rc = RewardComputer()
+        obs1 = _make_obs(ally_towers=0.65, enemy_towers=0.65)
+        obs2 = _make_obs(ally_towers=0.65, enemy_towers=0.65)
+        rc.compute(obs1, obs2)
+
+        # Only one tower increases slightly (noise)
+        obs3 = _make_obs(ally_towers=0.70, enemy_towers=0.65)
+        rc.compute(obs2, obs3)
+        assert rc.new_game_detected is False
+
+    def test_anomaly_not_triggered_on_first_call(self):
+        """First compute() has no prior state — no anomaly possible."""
+        rc = RewardComputer()
+        obs1 = _make_obs(ally_towers=2.0 / 3.0, enemy_towers=2.0 / 3.0)
+        obs2 = _make_obs(ally_towers=1.0, enemy_towers=1.0)
+        rc.compute(obs1, obs2)
+        assert rc.new_game_detected is False
+
+    def test_anomaly_resets_internal_state(self):
+        """After anomaly, next compute() should work cleanly."""
+        rc = RewardComputer()
+        # Build up state
+        obs1 = _make_obs(ally_towers=2.0 / 3.0, enemy_towers=2.0 / 3.0)
+        obs2 = _make_obs(ally_towers=2.0 / 3.0, enemy_towers=2.0 / 3.0)
+        rc.compute(obs1, obs2)
+
+        # Trigger anomaly
+        obs3 = _make_obs(ally_towers=1.0, enemy_towers=1.0)
+        rc.compute(obs2, obs3)
+        assert rc.new_game_detected is True
+
+        # Next call should be clean (no anomaly)
+        obs4 = _make_obs(ally_towers=1.0, enemy_towers=1.0)
+        reward = rc.compute(obs3, obs4)
+        assert rc.new_game_detected is False
+        assert reward == pytest.approx(0.02, abs=1e-6)
+
+
+class TestRewardClamping:
+    """Test reward clamping (Layer 4)."""
+
+    def test_reward_clamping_positive(self):
+        """Non-terminal reward should be clamped to reward_clamp."""
+        cfg = RewardConfig(enemy_crown_reward=20.0, reward_clamp=15.0)
+        rc = RewardComputer(cfg)
+        obs1 = _make_obs(enemy_towers=1.0)
+        obs2 = _make_obs(enemy_towers=2.0 / 3.0)
+        reward = rc.compute(obs1, obs2)
+        # 20 + 0.02 would be clamped to 15
+        assert reward == pytest.approx(15.0, abs=0.1)
+
+    def test_reward_clamping_negative(self):
+        """Negative non-terminal reward should be clamped."""
+        cfg = RewardConfig(ally_crown_penalty=-20.0, reward_clamp=15.0)
+        rc = RewardComputer(cfg)
+        obs1 = _make_obs(ally_towers=1.0)
+        obs2 = _make_obs(ally_towers=2.0 / 3.0)
+        reward = rc.compute(obs1, obs2)
+        # -20 + 0.02 clamped to -15
+        assert reward == pytest.approx(-15.0, abs=0.1)
+
+    def test_terminal_reward_bypasses_clamp(self):
+        """Terminal rewards (win/loss) are added AFTER clamping."""
+        rc = RewardComputer()
+        obs1 = _make_obs()
+        obs2 = _make_obs()
+        reward = rc.compute(obs1, obs2, terminal_outcome="win")
+        # survival (0.02) clamped to 0.02, then + 30 = 30.02
+        assert reward == pytest.approx(30.02, abs=0.1)
+
+    def test_crown_plus_terminal_with_clamp(self):
+        """Crown reward gets clamped, terminal added on top."""
+        cfg = RewardConfig(enemy_crown_reward=20.0, reward_clamp=15.0)
+        rc = RewardComputer(cfg)
+        obs1 = _make_obs(enemy_towers=1.0)
+        obs2 = _make_obs(enemy_towers=2.0 / 3.0)
+        reward = rc.compute(obs1, obs2, terminal_outcome="win")
+        # non-terminal: 20 + 0.02 = 20.02, clamped to 15, then + 30 = 45
+        assert reward == pytest.approx(45.0, abs=0.1)
