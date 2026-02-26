@@ -263,9 +263,9 @@ class ClashRoyaleEnv(gymnasium.Env):
         if self._config.verbose:
             print("[Env] Waiting for game start... Press Battle in Clash Royale.")
 
-        # Wait for game to start
+        # Wait for game to start (use cropped frames so detector regions align)
         started = self._game_detector.wait_for_game_start(
-            capture_fn=self._capture.capture,
+            capture_fn=lambda: self._crop_game_region(self._capture.capture()),
             timeout=self._config.game_start_timeout,
         )
         if not started:
@@ -325,9 +325,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         if action != _NOOP_ACTION and exec_result.get("executed", False):
             self._cards_played += 1
 
-        # 2. Capture next frame
+        # 2. Capture next frame and crop to game region
         frame = self._capture.capture()
-        raw_frame = frame.copy()  # Keep uncropped for phase detection
         frame = self._crop_game_region(frame)
 
         # 3. Check for identical frames (freeze detection)
@@ -344,13 +343,13 @@ class ClashRoyaleEnv(gymnasium.Env):
             if self._config.verbose:
                 print(f"[Env] Truncated: {self._identical_frame_count} identical frames.")
 
-        # 4. Check game phase
-        phase = self._game_detector.detect_phase(raw_frame)
+        # 4. Check game phase (use cropped frame so detector regions align)
+        phase = self._game_detector.detect_phase(frame)
         if phase == Phase.END_SCREEN:
             terminated = True
             # Wait briefly for full results screen
             time.sleep(1.0)
-            end_frame = self._capture.capture()
+            end_frame = self._crop_game_region(self._capture.capture())
             outcome = self._game_detector.detect_outcome(end_frame)
             if self._config.verbose:
                 print(f"[Env] Game ended. Outcome: {outcome}")
