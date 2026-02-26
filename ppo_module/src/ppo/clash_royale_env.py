@@ -302,7 +302,11 @@ class ClashRoyaleEnv(gymnasium.Env):
     def step(
         self, action: int,
     ) -> tuple[dict[str, np.ndarray], float, bool, bool, dict]:
-        """Execute one step: action -> capture -> perceive -> reward.
+        """Execute one step: capture -> detect phase -> action -> perceive -> reward.
+
+        Frame capture and phase detection happen BEFORE action execution so that
+        the end screen is detected before the model can click on it (which would
+        dismiss the results overlay and start a new game).
 
         Args:
             action: Integer action index (0-2304).
@@ -315,22 +319,18 @@ class ClashRoyaleEnv(gymnasium.Env):
         truncated = False
         truncation_reason = ""
         outcome = None
+        exec_result = {"executed": False, "reason": "skipped"}
 
         # Layer 1: Max episode length
         if self._step_count >= self._config.max_episode_steps:
             truncated = True
             truncation_reason = "max_steps"
 
-        # 1. Execute action
-        exec_result = self._dispatcher.execute(action, logit_score=0.0)
-        if action != _NOOP_ACTION and exec_result.get("executed", False):
-            self._cards_played += 1
-
-        # 2. Capture next frame and crop to game region
+        # 1. Capture frame FIRST (before any action)
         frame = self._capture.capture()
         frame = self._crop_game_region(frame)
 
-        # 3. Check for identical frames (freeze detection)
+        # 2. Check for identical frames (freeze detection)
         fhash = self._frame_hash(frame)
         if fhash == self._prev_frame_hash:
             self._identical_frame_count += 1
@@ -344,9 +344,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             if self._config.verbose:
                 print(f"[Env] Truncated: {self._identical_frame_count} identical frames.")
 
-        # 4. Check game phase (use cropped frame so detector regions align)
-        # Only trust END_SCREEN after min_episode_steps to avoid false positives
-        # from spell effects, overlays, or animations that dim the card bar
+        # 3. Check game phase BEFORE executing action
+        # This prevents the model from clicking on the end screen and dismissing it
         phase = self._game_detector.detect_phase(frame)
         if phase == Phase.END_SCREEN and self._step_count >= self._config.min_episode_steps:
             terminated = True
@@ -359,6 +358,12 @@ class ClashRoyaleEnv(gymnasium.Env):
         elif phase == Phase.END_SCREEN and self._config.verbose:
             print(f"[Env] Ignoring END_SCREEN at step {self._step_count} "
                   f"(min_episode_steps={self._config.min_episode_steps})")
+
+        # 4. Execute action ONLY if game is still in progress
+        if not terminated:
+            exec_result = self._dispatcher.execute(action, logit_score=0.0)
+            if action != _NOOP_ACTION and exec_result.get("executed", False):
+                self._cards_played += 1
 
         # 5. Run perception
         perception_result = self._perception.process_frame(frame)
