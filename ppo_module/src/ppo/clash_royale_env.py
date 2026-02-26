@@ -82,6 +82,7 @@ class EnvConfig:
 
     # Episode limits
     max_episode_steps: int = 700  # 300s game * 2 FPS = 600 + overtime margin
+    min_episode_steps: int = 60  # Ignore END_SCREEN before this (30s at 2 FPS)
 
     # Timeouts
     step_timeout: float = 5.0  # Max seconds to wait for a frame
@@ -344,8 +345,10 @@ class ClashRoyaleEnv(gymnasium.Env):
                 print(f"[Env] Truncated: {self._identical_frame_count} identical frames.")
 
         # 4. Check game phase (use cropped frame so detector regions align)
+        # Only trust END_SCREEN after min_episode_steps to avoid false positives
+        # from spell effects, overlays, or animations that dim the card bar
         phase = self._game_detector.detect_phase(frame)
-        if phase == Phase.END_SCREEN:
+        if phase == Phase.END_SCREEN and self._step_count >= self._config.min_episode_steps:
             terminated = True
             # Wait briefly for full results screen
             time.sleep(1.0)
@@ -353,6 +356,9 @@ class ClashRoyaleEnv(gymnasium.Env):
             outcome = self._game_detector.detect_outcome(end_frame)
             if self._config.verbose:
                 print(f"[Env] Game ended. Outcome: {outcome}")
+        elif phase == Phase.END_SCREEN and self._config.verbose:
+            print(f"[Env] Ignoring END_SCREEN at step {self._step_count} "
+                  f"(min_episode_steps={self._config.min_episode_steps})")
 
         # 5. Run perception
         perception_result = self._perception.process_frame(frame)

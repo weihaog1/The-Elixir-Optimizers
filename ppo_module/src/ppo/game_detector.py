@@ -144,11 +144,10 @@ class GamePhaseDetector:
             candidate = Phase.IN_GAME
         elif not card_bar_active and arena_intensity < cfg.end_screen_arena_intensity_max:
             candidate = Phase.LOADING
-        elif not card_bar_active or (
-            arena_intensity > cfg.end_screen_arena_intensity_max
-            and not arena_active
-        ):
-            # Results overlay: arena is dimmed/covered, card bar gone
+        elif not card_bar_active and not arena_active:
+            # Results overlay: card bar gone AND arena is uniform (dimmed/covered)
+            # Both conditions required to avoid false positives from spell effects
+            # or card animations that briefly dim the card bar during gameplay
             candidate = Phase.END_SCREEN
         else:
             candidate = Phase.UNKNOWN
