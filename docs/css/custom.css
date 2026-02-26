@@ -1181,6 +1181,26 @@ section > h2 {
   opacity: 0.7;
 }
 
+.cr-card-links {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.cr-card-links a {
+  color: rgba(255, 255, 255, 0.5);
+  background-image: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-flex;
+}
+
+.cr-card-links a:hover {
+  color: var(--cr-gold-bright);
+  background-image: none;
+  transform: scale(1.2);
+}
+
 /* --- Elixir Cost Circle --- */
 .cr-card-cost {
   position: absolute;

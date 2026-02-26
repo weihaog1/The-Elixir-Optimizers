@@ -7,9 +7,13 @@ title: Home
   <div class="hero-text reveal">
     <p class="elixir-badge elixir-badge--gold">CS 175 -- Winter 2026</p>
     <h1 class="hero-title site-title-shimmer">The Elixir<br>Optimizers</h1>
+    <p class="hero-subtitle" style="font-size: 0.95rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem; font-style: italic;">
+      Named after the elixir resource in Clash Royale -- we optimize how every drop is spent.
+    </p>
     <p class="hero-tagline">
       A reinforcement learning agent that plays Clash Royale
-      through screen capture, computer vision, and imitation learning.
+      through screen capture, computer vision, imitation learning,
+      and reinforcement learning.
     </p>
     <div class="hero-actions">
       <a href="{{ 'proposal.html' | relative_url }}" class="btn-royal">Read Proposal</a>
