@@ -25,6 +25,7 @@ Usage:
     obs, reward, terminated, truncated, info = env.step(action)
 """
 
+import msvcrt
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -243,6 +244,50 @@ class ClashRoyaleEnv(gymnasium.Env):
         """Quick hash for identical-frame detection."""
         return hash(frame[::10, ::10, 0].tobytes())
 
+    def _check_manual_stop(self) -> tuple[bool, Optional[str], int, int]:
+        """Non-blocking check if operator pressed Enter to end the episode.
+
+        Uses msvcrt.kbhit() (Windows) to detect keypress without blocking
+        the step loop. When Enter is pressed, prompts for game results.
+
+        Returns:
+            (should_stop, outcome, enemy_crowns, ally_crowns_lost)
+        """
+        if not msvcrt.kbhit():
+            return False, None, 0, 0
+        key = msvcrt.getwch()
+        if key != "\r":  # Not Enter
+            return False, None, 0, 0
+
+        # Flush any remaining buffered input
+        while msvcrt.kbhit():
+            msvcrt.getwch()
+
+        print("\n[Env] Manual stop. Enter game results:")
+        outcome_key = input("  Outcome (w=win, l=loss, d=draw): ").strip().lower()
+        outcome_map = {"w": "win", "l": "loss", "d": "draw"}
+        outcome = outcome_map.get(outcome_key)
+        if outcome is None:
+            print(f"  Unknown outcome '{outcome_key}', skipping terminal reward.")
+
+        try:
+            enemy_crowns = int(input("  Crowns scored (0-3): ").strip())
+            enemy_crowns = max(0, min(3, enemy_crowns))
+        except ValueError:
+            enemy_crowns = 0
+
+        try:
+            ally_crowns_lost = int(input("  Towers lost (0-3): ").strip())
+            ally_crowns_lost = max(0, min(3, ally_crowns_lost))
+        except ValueError:
+            ally_crowns_lost = 0
+
+        if self._config.verbose:
+            print(f"  -> outcome={outcome}, crowns_scored={enemy_crowns}, "
+                  f"towers_lost={ally_crowns_lost}")
+
+        return True, outcome, enemy_crowns, ally_crowns_lost
+
     def reset(
         self,
         seed: Optional[int] = None,
@@ -330,6 +375,18 @@ class ClashRoyaleEnv(gymnasium.Env):
         outcome = None
         exec_result = {"executed": False, "reason": "skipped"}
 
+        # Manual stop: operator presses Enter to end the episode
+        manual_crown_reward = 0.0
+        should_stop, manual_outcome, enemy_crowns, ally_crowns_lost = (
+            self._check_manual_stop()
+        )
+        if should_stop:
+            terminated = True
+            outcome = manual_outcome
+            manual_crown_reward = self._reward_computer.compute_manual_crowns(
+                enemy_crowns, ally_crowns_lost,
+            )
+
         # Layer 1: Max episode length
         if self._step_count >= self._config.max_episode_steps:
             truncated = True
@@ -395,6 +452,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             reward = self._reward_computer.compute(
                 self._prev_obs, curr_obs, terminal_outcome=outcome,
             )
+        # Add manual crown reward (non-zero only when operator manually stopped)
+        reward += manual_crown_reward
         self._episode_reward += reward
         self._prev_obs = curr_obs
 

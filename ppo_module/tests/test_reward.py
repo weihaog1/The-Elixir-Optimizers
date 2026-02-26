@@ -237,3 +237,38 @@ class TestRewardClamping:
         reward = rc.compute(obs1, obs2, terminal_outcome="win")
         # non-terminal: 20 + 0.02 = 20.02, clamped to 15, then + 30 = 45
         assert reward == pytest.approx(45.0, abs=0.1)
+
+
+class TestManualCrowns:
+    """Test manual crown reward computation."""
+
+    def test_enemy_crowns_only(self):
+        """Scoring 2 crowns with no losses."""
+        rc = RewardComputer()
+        reward = rc.compute_manual_crowns(enemy_crowns=2, ally_crowns_lost=0)
+        assert reward == pytest.approx(20.0, abs=0.1)
+
+    def test_ally_crowns_lost_only(self):
+        """Losing 1 tower with no crowns scored."""
+        rc = RewardComputer()
+        reward = rc.compute_manual_crowns(enemy_crowns=0, ally_crowns_lost=1)
+        assert reward == pytest.approx(-10.0, abs=0.1)
+
+    def test_mixed_crowns(self):
+        """2 crowns scored, 1 tower lost."""
+        rc = RewardComputer()
+        reward = rc.compute_manual_crowns(enemy_crowns=2, ally_crowns_lost=1)
+        # 2*10 + 1*(-10) = 10
+        assert reward == pytest.approx(10.0, abs=0.1)
+
+    def test_zero_crowns(self):
+        """No crowns either side."""
+        rc = RewardComputer()
+        reward = rc.compute_manual_crowns(enemy_crowns=0, ally_crowns_lost=0)
+        assert reward == pytest.approx(0.0, abs=1e-6)
+
+    def test_three_crown_victory(self):
+        """3-crown with no losses."""
+        rc = RewardComputer()
+        reward = rc.compute_manual_crowns(enemy_crowns=3, ally_crowns_lost=0)
+        assert reward == pytest.approx(30.0, abs=0.1)

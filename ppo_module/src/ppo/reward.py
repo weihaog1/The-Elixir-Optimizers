@@ -161,3 +161,24 @@ class RewardComputer:
             reward += cfg.draw_penalty
 
         return reward
+
+    def compute_manual_crowns(
+        self, enemy_crowns: int, ally_crowns_lost: int,
+    ) -> float:
+        """Compute crown reward from manually-provided crown counts.
+
+        Used when the operator manually ends an episode and reports
+        crowns scored/lost (since tower counts in the observation vector
+        are hardcoded and don't change during live play).
+
+        Args:
+            enemy_crowns: Number of enemy towers destroyed (0-3).
+            ally_crowns_lost: Number of ally towers lost (0-3).
+
+        Returns:
+            Crown reward (can be positive or negative).
+        """
+        reward = 0.0
+        reward += enemy_crowns * self.config.enemy_crown_reward
+        reward += ally_crowns_lost * self.config.ally_crown_penalty
+        return reward
