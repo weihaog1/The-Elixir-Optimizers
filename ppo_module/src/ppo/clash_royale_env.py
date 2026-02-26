@@ -92,6 +92,9 @@ class EnvConfig:
     # Device
     device: str = "cpu"
 
+    # Operator control
+    pause_between_episodes: bool = True  # Wait for Enter between episodes
+
     # Logging
     verbose: bool = True
 
@@ -252,6 +255,12 @@ class ClashRoyaleEnv(gymnasium.Env):
         """
         super().reset(seed=seed, options=options)
 
+        # Pause between episodes: wait for operator to press Enter
+        # Skip on the very first episode (step_count == 0 means no game played yet)
+        if self._config.pause_between_episodes and self._step_count > 0:
+            print("\n[Env] Episode ended. Queue the next match, then press Enter to continue...")
+            input()
+
         # Reset episode state
         self._reward_computer.reset()
         self._game_detector.reset()
@@ -360,7 +369,10 @@ class ClashRoyaleEnv(gymnasium.Env):
                   f"(min_episode_steps={self._config.min_episode_steps})")
 
         # 4. Execute action ONLY if game is still in progress
-        if not terminated:
+        #    Also suppress if END_SCREEN is the raw candidate (debounce not yet
+        #    confirmed) — prevents clicking "Play Again" during the 3-frame window
+        candidate_end = self._game_detector.candidate_phase == Phase.END_SCREEN
+        if not terminated and not candidate_end:
             exec_result = self._dispatcher.execute(action, logit_score=0.0)
             if action != _NOOP_ACTION and exec_result.get("executed", False):
                 self._cards_played += 1

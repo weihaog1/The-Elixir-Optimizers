@@ -57,6 +57,44 @@ class TestGamePhaseDetector:
         assert result is None or isinstance(result, str)
 
 
+class TestCandidatePhase:
+    """Test candidate_phase property for action suppression."""
+
+    def test_candidate_phase_returns_raw_candidate(self):
+        """candidate_phase should reflect the raw (unconfirmed) candidate."""
+        detector = GamePhaseDetector()
+        # Initially UNKNOWN
+        assert detector.candidate_phase == Phase.UNKNOWN
+
+        # Feed 1 IN_GAME frame — candidate updates immediately
+        in_game_frame = np.zeros((960, 540, 3), dtype=np.uint8)
+        in_game_frame[50:750, :, :] = np.random.randint(30, 200, (700, 540, 3), dtype=np.uint8)
+        in_game_frame[770:920, :, :] = 150
+        detector.detect_phase(in_game_frame)
+        assert detector.candidate_phase == Phase.IN_GAME
+
+    def test_candidate_end_screen_before_confirmed(self):
+        """candidate_phase should be END_SCREEN even while confirmed is still IN_GAME."""
+        detector = GamePhaseDetector()
+        # Establish IN_GAME (confirmed)
+        in_game_frame = np.zeros((960, 540, 3), dtype=np.uint8)
+        in_game_frame[50:750, :, :] = np.random.randint(30, 200, (700, 540, 3), dtype=np.uint8)
+        in_game_frame[770:920, :, :] = 150
+        for _ in range(5):
+            detector.detect_phase(in_game_frame)
+        assert detector._confirmed_phase == Phase.IN_GAME
+
+        # Feed 1 END_SCREEN frame — card bar dim + arena uniform
+        end_frame = np.full((960, 540, 3), 100, dtype=np.uint8)
+        end_frame[770:920, :, :] = 10  # dim card bar
+        end_frame[50:750, :, :] = 90   # uniform arena (low variance)
+        detector.detect_phase(end_frame)
+
+        # candidate should be END_SCREEN, but confirmed still IN_GAME
+        assert detector.candidate_phase == Phase.END_SCREEN
+        assert detector._confirmed_phase == Phase.IN_GAME
+
+
 class TestPhaseStability:
     """Test phase detection stability fix (Layer 3)."""
 
@@ -125,6 +163,11 @@ class TestEnvConfig:
         from src.ppo.clash_royale_env import EnvConfig
         config = EnvConfig()
         assert config.max_episode_steps == 700
+
+    def test_pause_between_episodes_default(self):
+        from src.ppo.clash_royale_env import EnvConfig
+        config = EnvConfig()
+        assert config.pause_between_episodes is True
 
 
 class TestRewardIntegration:

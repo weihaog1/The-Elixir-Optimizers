@@ -147,6 +147,10 @@ def parse_args():
         "--no-perception", action="store_true",
         help="Disable YOLO detection (use zero-filled observations)",
     )
+    parser.add_argument(
+        "--no-pause", action="store_true",
+        help="Skip Enter prompt between episodes (auto-continue)",
+    )
 
     # Output
     parser.add_argument(
@@ -192,6 +196,7 @@ def main():
         reward_config=RewardConfig(),
         templates_dir=args.templates_dir,
         device=args.device,
+        pause_between_episodes=not args.no_pause,
     )
 
     ppo_config = PPOConfig(

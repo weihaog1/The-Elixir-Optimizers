@@ -100,6 +100,15 @@ class GamePhaseDetector:
         if templates_dir:
             self._load_templates(templates_dir)
 
+    @property
+    def candidate_phase(self) -> Phase:
+        """Raw candidate phase (not yet debounced).
+
+        Use this to check if END_SCREEN is suspected but not yet confirmed,
+        e.g. to suppress actions during the debounce window.
+        """
+        return self._phase
+
     def _load_templates(self, templates_dir: str) -> None:
         """Load Victory/Defeat template images for matching."""
         victory_path = os.path.join(templates_dir, "victory.png")
