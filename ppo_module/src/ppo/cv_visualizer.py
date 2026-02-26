@@ -248,8 +248,11 @@ class CVVisualizer:
         if self._writer is not None:
             self._writer.release()
             self._writer = None
-        if self._cfg.show_window:
-            cv2.destroyWindow(self._cfg.window_name)
+        if self._cfg.show_window and self._frame_count > 0:
+            try:
+                cv2.destroyWindow(self._cfg.window_name)
+            except cv2.error:
+                pass
 
     # ── Left panel: game frame ───────────────────────────────────────────
 
@@ -385,6 +388,7 @@ class CVVisualizer:
             y += 18
 
         def _line(text: str, color=_CLR_TEXT):
+            nonlocal y
             _text(text, 10, color)
             y += 14
 
