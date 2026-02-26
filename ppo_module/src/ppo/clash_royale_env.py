@@ -96,6 +96,10 @@ class EnvConfig:
     # Operator control
     pause_between_episodes: bool = True  # Wait for Enter between episodes
 
+    # Visualization
+    visualize: bool = False  # Show live observation heatmaps
+    vis_save_dir: str = ""  # Save visualization frames to this directory
+
     # Logging
     verbose: bool = True
 
@@ -195,10 +199,20 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._identical_frame_count = 0
         self._prev_frame_hash: Optional[int] = None
 
+        # Visualization
+        self._visualizer = None
+        if self._config.visualize:
+            from src.ppo.obs_visualizer import ObsVisualizer
+            self._visualizer = ObsVisualizer(
+                save_dir=self._config.vis_save_dir,
+            )
+
         if self._config.verbose:
             print(f"[Env] Initialized. Game bounds: ({gx},{gy}) {gw}x{gh}")
             print(f"[Env] Perception: {self._perception.perception_active}")
             print(f"[Env] Dry run: {self._config.dry_run}")
+            if self._visualizer:
+                print(f"[Env] Visualization ON (save_dir={self._config.vis_save_dir or 'none'})")
 
     @staticmethod
     def _detect_game_bounds(
@@ -446,6 +460,10 @@ class ClashRoyaleEnv(gymnasium.Env):
             mask = mask[0]
         self._current_mask = mask.astype(np.bool_)
 
+        # 5b. Update visualization
+        if self._visualizer is not None:
+            self._visualizer.update(curr_obs, self._step_count)
+
         # 6. Compute reward
         reward = 0.0
         if self._prev_obs is not None:
@@ -494,6 +512,8 @@ class ClashRoyaleEnv(gymnasium.Env):
 
     def close(self) -> None:
         """Release resources."""
+        if self._visualizer is not None:
+            self._visualizer.close()
         self._capture.release()
 
     def render(self) -> None:

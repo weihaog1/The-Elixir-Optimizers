@@ -168,6 +168,16 @@ def parse_args():
         help="Directory with victory.png/defeat.png templates for game end detection",
     )
 
+    # Visualization
+    parser.add_argument(
+        "--visualize", action="store_true",
+        help="Show live observation tensor heatmaps during training",
+    )
+    parser.add_argument(
+        "--vis-save-dir", type=str, default="",
+        help="Save visualization frames to this directory (for video)",
+    )
+
     return parser.parse_args()
 
 
@@ -197,6 +207,8 @@ def main():
         templates_dir=args.templates_dir,
         device=args.device,
         pause_between_episodes=not args.no_pause,
+        visualize=args.visualize,
+        vis_save_dir=args.vis_save_dir,
     )
 
     ppo_config = PPOConfig(
