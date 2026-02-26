@@ -31,6 +31,8 @@ import argparse
 import os
 import sys
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 # ---------------------------------------------------------------------------
 # Namespace package setup (same pattern as bc_model_module/run_live.py)
 # ---------------------------------------------------------------------------
