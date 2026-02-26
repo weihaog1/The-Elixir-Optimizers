@@ -1,0 +1,50 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {"id": "bg-percept", "type": "rectangle", "x": -20, "y": 20, "width": 480, "height": 640, "strokeColor": "#1971c2", "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeWidth": 1, "roughness": 1, "opacity": 15, "roundness": {"type": 3}, "boundElements": []},
+    {"id": "bg-decide", "type": "rectangle", "x": 470, "y": 20, "width": 360, "height": 640, "strokeColor": "#7048e8", "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeWidth": 1, "roughness": 1, "opacity": 15, "roundness": {"type": 3}, "boundElements": []},
+    {"id": "label-percept", "type": "text", "x": 150, "y": 28, "width": 130, "height": 20, "text": "PERCEPTION", "fontSize": 14, "fontFamily": 4, "textAlign": "center", "strokeColor": "#1971c2"},
+    {"id": "label-decide", "type": "text", "x": 600, "y": 28, "width": 90, "height": 20, "text": "DECISION", "fontSize": 14, "fontFamily": 4, "textAlign": "center", "strokeColor": "#7048e8"},
+
+    {"id": "sc", "type": "rectangle", "x": 80, "y": 60, "width": 220, "height": 70, "strokeColor": "#1971c2", "backgroundColor": "#a5d8ff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a1", "type": "arrow"}]},
+    {"id": "sc-t", "type": "text", "x": 120, "y": 71, "width": 140, "height": 48, "text": "Screen Capture\n(mss)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "yolo", "type": "rectangle", "x": 60, "y": 210, "width": 260, "height": 70, "strokeColor": "#1971c2", "backgroundColor": "#a5d8ff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a1", "type": "arrow"}, {"id": "a2", "type": "arrow"}]},
+    {"id": "yolo-t", "type": "text", "x": 100, "y": 221, "width": 180, "height": 48, "text": "YOLOv8s Detection\n(155 classes)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "sb", "type": "rectangle", "x": 110, "y": 360, "width": 160, "height": 60, "strokeColor": "#1971c2", "backgroundColor": "#a5d8ff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a2", "type": "arrow"}, {"id": "a3", "type": "arrow"}, {"id": "a4", "type": "arrow"}]},
+    {"id": "sb-t", "type": "text", "x": 132, "y": 378, "width": 116, "height": 24, "text": "State Builder", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "ocr", "type": "rectangle", "x": 10, "y": 500, "width": 200, "height": 70, "strokeColor": "#2f9e44", "backgroundColor": "#b2f2bb", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a3", "type": "arrow"}, {"id": "a5", "type": "arrow"}]},
+    {"id": "ocr-t", "type": "text", "x": 22, "y": 511, "width": 176, "height": 48, "text": "OCR\n(Timer, Elixir, HP)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "cc", "type": "rectangle", "x": 240, "y": 500, "width": 190, "height": 70, "strokeColor": "#2f9e44", "backgroundColor": "#b2f2bb", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a4", "type": "arrow"}, {"id": "a6", "type": "arrow"}]},
+    {"id": "cc-t", "type": "text", "x": 268, "y": 511, "width": 134, "height": 48, "text": "Card Classifier\n(MiniResNet)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "gst", "type": "rectangle", "x": 500, "y": 490, "width": 300, "height": 80, "strokeColor": "#e67700", "backgroundColor": "#fff3bf", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a5", "type": "arrow"}, {"id": "a6", "type": "arrow"}, {"id": "a7", "type": "arrow"}]},
+    {"id": "gst-t", "type": "text", "x": 530, "y": 502, "width": 240, "height": 48, "text": "Game State Tensor\narena(18,32,C)+vector(N,)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "pn", "type": "rectangle", "x": 540, "y": 340, "width": 220, "height": 70, "strokeColor": "#7048e8", "backgroundColor": "#d0bfff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a7", "type": "arrow"}, {"id": "a8", "type": "arrow"}]},
+    {"id": "pn-t", "type": "text", "x": 580, "y": 351, "width": 140, "height": 48, "text": "Policy Network\n(BC -> PPO)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "act", "type": "rectangle", "x": 545, "y": 210, "width": 210, "height": 70, "strokeColor": "#7048e8", "backgroundColor": "#d0bfff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a8", "type": "arrow"}, {"id": "a9", "type": "arrow"}]},
+    {"id": "act-t", "type": "text", "x": 578, "y": 221, "width": 144, "height": 48, "text": "Action Output\n(card_id, x, y)", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "pyag", "type": "rectangle", "x": 540, "y": 60, "width": 220, "height": 70, "strokeColor": "#7048e8", "backgroundColor": "#d0bfff", "fillStyle": "solid", "roundness": {"type": 3}, "boundElements": [{"id": "a9", "type": "arrow"}]},
+    {"id": "pyag-t", "type": "text", "x": 590, "y": 71, "width": 120, "height": 48, "text": "PyAutoGUI\nExecution", "fontSize": 16, "fontFamily": 4, "textAlign": "center"},
+
+    {"id": "a1", "type": "arrow", "x": 190, "y": 135, "width": 0, "height": 70, "points": [[0, 0], [0, 70]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "sc", "focus": 0, "gap": 5}, "endBinding": {"elementId": "yolo", "focus": 0, "gap": 5}},
+    {"id": "a2", "type": "arrow", "x": 190, "y": 285, "width": 0, "height": 70, "points": [[0, 0], [0, 70]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "yolo", "focus": 0, "gap": 5}, "endBinding": {"elementId": "sb", "focus": 0, "gap": 5}},
+    {"id": "a3", "type": "arrow", "x": 155, "y": 425, "width": 45, "height": 70, "points": [[0, 0], [-45, 70]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "sb", "focus": -0.3, "gap": 5}, "endBinding": {"elementId": "ocr", "focus": 0, "gap": 5}},
+    {"id": "a4", "type": "arrow", "x": 225, "y": 425, "width": 110, "height": 70, "points": [[0, 0], [110, 70]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "sb", "focus": 0.3, "gap": 5}, "endBinding": {"elementId": "cc", "focus": 0, "gap": 5}},
+    {"id": "a5", "type": "arrow", "x": 110, "y": 575, "width": 540, "height": 55, "points": [[0, 0], [0, 50], [540, 50], [540, -5]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "ocr", "focus": 0, "gap": 5}, "endBinding": {"elementId": "gst", "focus": 0, "gap": 5}},
+    {"id": "a6", "type": "arrow", "x": 435, "y": 530, "width": 60, "height": 0, "points": [[0, 0], [60, 0]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "cc", "focus": -0.2, "gap": 5}, "endBinding": {"elementId": "gst", "focus": -0.2, "gap": 5}},
+    {"id": "a7", "type": "arrow", "x": 650, "y": 485, "width": 0, "height": 75, "points": [[0, 0], [0, -75]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "gst", "focus": 0, "gap": 5}, "endBinding": {"elementId": "pn", "focus": 0, "gap": 5}},
+    {"id": "a8", "type": "arrow", "x": 650, "y": 335, "width": 0, "height": 55, "points": [[0, 0], [0, -55]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "pn", "focus": 0, "gap": 5}, "endBinding": {"elementId": "act", "focus": 0, "gap": 5}},
+    {"id": "a9", "type": "arrow", "x": 650, "y": 205, "width": 0, "height": 75, "points": [[0, 0], [0, -75]], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeWidth": 2, "startBinding": {"elementId": "act", "focus": 0, "gap": 5}, "endBinding": {"elementId": "pyag", "focus": 0, "gap": 5}}
+  ],
+  "appState": {"viewBackgroundColor": "#ffffff"},
+  "files": {}
+}

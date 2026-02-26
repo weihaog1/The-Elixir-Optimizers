@@ -1,0 +1,27 @@
+{% assign current = page.url | downcase %}
+{% assign statusClass = 'disabled' %}
+{% assign proposalClass = 'disabled' %}
+{% assign finalClass = 'disabled' %}
+{% for p in site.html_pages %}
+  {% if p.url == '/proposal.html' %}{% assign proposalClass = '' %}{% endif %}
+  {% if p.url == '/status.html' %}{% assign statusClass = '' %}{% endif %}
+  {% if p.url == '/final.html' %}{% assign finalClass = '' %}{% endif %}
+{% endfor %}
+
+<nav class="site-nav" id="site-nav">
+  <div class="nav-inner">
+    <a class="nav-brand site-title-shimmer" href="{{ 'index.html' | relative_url }}">
+      {{ site.title_short }}
+    </a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="{{ 'index.html' | relative_url }}" class="{% if current == '/index.html' or current == '/' %}active{% endif %}">Home</a></li>
+      <li><a href="{{ 'proposal.html' | relative_url }}" class="{{ proposalClass }}{% if current == '/proposal.html' %} active{% endif %}">Proposal</a></li>
+      <li><a href="{{ 'status.html' | relative_url }}" class="{{ statusClass }}{% if current == '/status.html' %} active{% endif %}">Status</a></li>
+      <li><a href="{{ 'final.html' | relative_url }}" class="{{ finalClass }}{% if current == '/final.html' %} active{% endif %}">Final</a></li>
+      <li><a href="{{ 'team.html' | relative_url }}" class="{% if current == '/team.html' %}active{% endif %}">Team</a></li>
+    </ul>
+  </div>
+</nav>

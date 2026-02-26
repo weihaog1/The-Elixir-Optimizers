@@ -1,15 +1,21 @@
 ###########
-# site.title
+# site settings
 
-title:    'The-Elixir-Optimizers'
-subtitle: 'CS 175: Project in AI'
+title:       'The Elixir Optimizers'
+title_short: 'Elixir Optimizers'
+subtitle:    'CS 175: Project in AI'
+description: 'Reinforcement Learning for Clash Royale'
+url:         'https://weihaog1.github.io'
+baseurl:     '/The-Elixir-Optimizers'
 
 
 #########################
-# more settings
+# build settings
 
 markdown: kramdown
 
 exclude:
-- README.md
-- LICENSE.md
+  - README.md
+  - LICENSE.md
+  - proposal.tex
+  - proposal_instruction.pdf

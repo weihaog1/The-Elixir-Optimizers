@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 0 910 660" style="font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3E2723"/>
+    </marker>
+    <filter id="shadow">
+      <feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Background regions -->
+  <rect x="-20" y="15" width="480" height="630" rx="14" fill="#a5d8ff" fill-opacity="0.12" stroke="#1971c2" stroke-width="1.5" stroke-opacity="0.25"/>
+  <rect x="470" y="15" width="360" height="630" rx="14" fill="#d0bfff" fill-opacity="0.12" stroke="#7048e8" stroke-width="1.5" stroke-opacity="0.25"/>
+
+  <!-- Phase labels -->
+  <text x="210" y="40" font-size="13" fill="#1971c2" text-anchor="middle" font-weight="700" letter-spacing="2">PERCEPTION</text>
+  <text x="650" y="40" font-size="13" fill="#7048e8" text-anchor="middle" font-weight="700" letter-spacing="2">DECISION</text>
+
+  <!-- ===== LEFT COLUMN (Perception, flows down) ===== -->
+
+  <!-- Screen Capture -->
+  <rect x="80" y="60" width="220" height="68" rx="10" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="190" y="88" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">Screen Capture</text>
+  <text x="190" y="112" font-size="13" fill="#495057" text-anchor="middle">(mss)</text>
+
+  <!-- YOLOv8s Detection -->
+  <rect x="60" y="208" width="260" height="68" rx="10" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="190" y="236" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">YOLOv8s Detection</text>
+  <text x="190" y="260" font-size="13" fill="#495057" text-anchor="middle">(155 classes)</text>
+
+  <!-- State Builder -->
+  <rect x="110" y="356" width="160" height="58" rx="10" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="190" y="391" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">State Builder</text>
+
+  <!-- OCR -->
+  <rect x="10" y="496" width="200" height="68" rx="10" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" filter="url(#shadow)"/>
+  <text x="110" y="524" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">OCR</text>
+  <text x="110" y="548" font-size="12" fill="#495057" text-anchor="middle">(Timer, Elixir, HP)</text>
+
+  <!-- Card Classifier -->
+  <rect x="240" y="496" width="190" height="68" rx="10" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" filter="url(#shadow)"/>
+  <text x="335" y="524" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">Card Classifier</text>
+  <text x="335" y="548" font-size="12" fill="#495057" text-anchor="middle">(MiniResNet)</text>
+
+  <!-- ===== RIGHT COLUMN (Decision, flows up) ===== -->
+
+  <!-- Game State Tensor -->
+  <rect x="500" y="488" width="300" height="76" rx="10" fill="#fff3bf" stroke="#e67700" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="518" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">Game State Tensor</text>
+  <text x="650" y="544" font-size="12" fill="#495057" text-anchor="middle">arena(18,32,C) + vector(N,)</text>
+
+  <!-- Policy Network -->
+  <rect x="540" y="340" width="220" height="68" rx="10" fill="#d0bfff" stroke="#7048e8" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="368" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">Policy Network</text>
+  <text x="650" y="392" font-size="13" fill="#495057" text-anchor="middle">(BC -> PPO)</text>
+
+  <!-- Action Output -->
+  <rect x="545" y="208" width="210" height="68" rx="10" fill="#d0bfff" stroke="#7048e8" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="236" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">Action Output</text>
+  <text x="650" y="260" font-size="13" fill="#495057" text-anchor="middle">(card_id, x, y)</text>
+
+  <!-- PyAutoGUI Execution -->
+  <rect x="540" y="60" width="220" height="68" rx="10" fill="#d0bfff" stroke="#7048e8" stroke-width="2" filter="url(#shadow)"/>
+  <text x="650" y="88" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="700">PyAutoGUI</text>
+  <text x="650" y="112" font-size="13" fill="#495057" text-anchor="middle">Execution</text>
+
+  <!-- ===== ARROWS ===== -->
+
+  <!-- Down: Screen Capture -> YOLOv8s -->
+  <line x1="190" y1="128" x2="190" y2="208" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Down: YOLOv8s -> State Builder -->
+  <line x1="190" y1="276" x2="190" y2="356" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Fork: State Builder -> OCR -->
+  <path d="M 155 414 L 110 496" fill="none" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Fork: State Builder -> Card Classifier -->
+  <path d="M 225 414 L 335 496" fill="none" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Merge: OCR -> Game State Tensor (bypass below CC) -->
+  <path d="M 110 564 L 110 610 L 650 610 L 650 564" fill="none" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Merge: Card Classifier -> Game State Tensor -->
+  <line x1="430" y1="530" x2="500" y2="526" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Up: Game State Tensor -> Policy Network -->
+  <line x1="650" y1="488" x2="650" y2="408" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Up: Policy Network -> Action -->
+  <line x1="650" y1="340" x2="650" y2="276" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Up: Action -> PyAutoGUI -->
+  <line x1="650" y1="208" x2="650" y2="128" stroke="#3E2723" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>

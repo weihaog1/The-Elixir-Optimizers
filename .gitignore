@@ -1,0 +1,6 @@
+.DS_Store
+docs/_site/
+docs/.jekyll-cache/
+*.log
+docs/images/_site/
+docs/images/.jekyll-cache/

@@ -1,0 +1,251 @@
+\documentclass[11pt, letterpaper]{article}
+
+% ============== Packages ==============
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{tcolorbox}
+
+% ============== Page Setup ==============
+\geometry{
+    letterpaper,
+    margin=1in,
+    top=1in,
+    bottom=1in
+}
+
+% ============== Colors ==============
+\definecolor{primaryblue}{RGB}{0, 82, 155}
+\definecolor{accentgray}{RGB}{100, 100, 100}
+\definecolor{lightgray}{RGB}{245, 245, 245}
+\definecolor{goalgreen}{RGB}{34, 139, 34}
+\definecolor{goalblue}{RGB}{65, 105, 225}
+\definecolor{goalpurple}{RGB}{128, 0, 128}
+
+% ============== Hyperref Setup ==============
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    urlcolor=primaryblue,
+    citecolor=primaryblue
+}
+
+% ============== Section Formatting ==============
+\titleformat{\section}
+    {\Large\bfseries\color{primaryblue}}
+    {\thesection}{1em}{}[\titlerule]
+
+\titleformat{\subsection}
+    {\large\bfseries\color{accentgray}}
+    {\thesubsection}{1em}{}
+
+% ============== Header/Footer ==============
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{accentgray}CS 175 Project Proposal}
+\fancyhead[R]{\small\color{accentgray}Winter 2026}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ============== Custom Boxes ==============
+\newtcolorbox{goalbox}[2][]{
+    colback=lightgray,
+    colframe=#2,
+    fonttitle=\bfseries,
+    title=#1,
+    arc=3pt,
+    boxrule=1pt,
+    left=10pt,
+    right=10pt,
+    top=8pt,
+    bottom=8pt
+}
+
+\newtcolorbox{iobox}{
+    colback=lightgray,
+    colframe=accentgray,
+    arc=3pt,
+    boxrule=0.5pt,
+    left=10pt,
+    right=10pt,
+    top=8pt,
+    bottom=8pt
+}
+
+% ============== Document ==============
+\begin{document}
+
+% ============== Title ==============
+\begin{center}
+    {\LARGE\bfseries\color{primaryblue} Reinforcement Learning for Clash Royale}\\[0.5em]
+    {\large CS 175: Project in Artificial Intelligence}\\[0.3em]
+    {\normalsize Winter 2026 --- Professor Roy Fox}\\[1.5em]
+
+    \begin{tabular}{c}
+        % Add team member names here
+        \textit{Team Members: [Names and UCINetIDs]}
+    \end{tabular}
+\end{center}
+
+\vspace{1em}
+
+% ============== Summary ==============
+\section{Summary of the Project}
+
+Our project aims to develop a \textbf{reinforcement learning agent} capable of playing \textbf{Clash Royale}, a real-time strategy card game with over 500 million downloads. Clash Royale presents a unique AI challenge that combines elements of collectible card games (strategic deck building and card selection) with real-time strategy games (unit placement, timing, and spatial reasoning). Unlike turn-based games where AI has achieved superhuman performance, Clash Royale requires continuous decision-making under time pressure with \textbf{partial observability}---the opponent's card hand and elixir count remain hidden throughout the match.
+
+The agent will interact with the actual game running on PC via \textbf{Google Play Games}, using a \textbf{non-embedded approach}: it perceives the game state through screen capture and computer vision (object detection for units, OCR for elixir/timer), and executes actions through automated mouse input. This mirrors how a human player would interact with the game, making our approach applicable to the real game environment rather than a simplified simulation.
+
+\vspace{0.5em}
+\begin{iobox}
+\textbf{Input:} Screen captures from the game client, processed through a computer vision pipeline (YOLOv8 for unit detection, OCR for numerical values) to extract a structured game state representation including:
+\begin{itemize}[nosep, leftmargin=1.5em]
+    \item Unit positions and types on the arena
+    \item Tower health values (friendly and enemy)
+    \item Available cards in hand (4 cards)
+    \item Current elixir count
+    \item Match timer
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{Output:} Actions consisting of:
+\begin{itemize}[nosep, leftmargin=1.5em]
+    \item \textbf{Card selection} --- which of the 4 available cards to play
+    \item \textbf{Placement coordinates} --- where on the arena to deploy the unit/spell
+\end{itemize}
+Executed via automated input (PyAutoGUI) to the game client.
+\end{iobox}
+
+% ============== Goals ==============
+\section{Project Goals}
+
+\begin{goalbox}[Minimum Goal]{goalgreen}
+Build a complete \textbf{end-to-end pipeline} that can:
+\begin{enumerate}[nosep, leftmargin=1.5em]
+    \item Capture game state from Google Play Games via screen capture
+    \item Extract relevant features using computer vision (YOLOv8, OCR)
+    \item Train a \textbf{behavior cloning} agent on collected expert gameplay data
+    \item Execute actions in the real game via automated input
+\end{enumerate}
+The agent should demonstrate basic competence by making contextually reasonable card placements (e.g., placing defensive units when under attack).
+\end{goalbox}
+
+\vspace{0.8em}
+
+\begin{goalbox}[Realistic Goal]{goalblue}
+Train a reinforcement learning agent using \textbf{imitation learning as a warm start}, followed by \textbf{online RL fine-tuning (PPO)}, that can consistently defeat the in-game ``Trainer'' AI opponents. We will:
+\begin{itemize}[nosep, leftmargin=1.5em]
+    \item Conduct systematic experiments comparing behavior cloning, offline RL (Decision Transformer), and online RL approaches
+    \item Analyze what strategies the agent learns through visualization of its decision-making patterns
+    \item Achieve $>$60\% win rate against Trainer AI
+\end{itemize}
+\end{goalbox}
+
+\vspace{0.8em}
+
+\begin{goalbox}[Moonshot Goal]{goalpurple}
+Develop an agent that achieves \textbf{competitive performance} against the built-in AI at higher difficulty levels or reaches a meaningful trophy count in ladder matches. Additionally:
+\begin{itemize}[nosep, leftmargin=1.5em]
+    \item Demonstrate \textbf{transfer learning} by training on one deck archetype and successfully adapting to others
+    \item Show the agent has learned generalizable Clash Royale strategies rather than deck-specific patterns
+\end{itemize}
+\end{goalbox}
+
+% ============== Algorithms ==============
+\section{AI/ML Algorithms}
+
+We plan to use \textbf{imitation learning} (behavior cloning) to bootstrap a policy from expert demonstrations, followed by \textbf{model-free reinforcement learning} with neural function approximators (specifically \textbf{Proximal Policy Optimization / PPO}) for online fine-tuning, with the computer vision pipeline utilizing convolutional neural networks (\textbf{YOLOv8} for object detection, \textbf{ResNet}-based classifiers for card recognition).
+
+\vspace{0.5em}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Component} & \textbf{Algorithm} & \textbf{Properties} \\
+\midrule
+State Extraction & YOLOv8 + OCR & Real-time object detection \\
+Policy (Initial) & Behavior Cloning & Supervised learning on expert data \\
+Policy (Fine-tuning) & PPO & Model-free, on-policy RL \\
+Alternative & Decision Transformer & Offline RL, sequence modeling \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ============== Evaluation ==============
+\section{Evaluation Plan}
+
+\subsection{Quantitative Evaluation}
+
+Our primary metric will be \textbf{win rate} against standardized opponents, measured across multiple matches to account for game variance. We will establish the following baselines:
+
+\vspace{0.5em}
+\begin{center}
+\begin{tabular}{llc}
+\toprule
+\textbf{Baseline} & \textbf{Description} & \textbf{Expected Win Rate} \\
+\midrule
+Random Policy & Uniform card/position selection & $\sim$0\% \\
+Greedy Heuristic & Play cards ASAP at fixed positions & $\sim$20--30\% \\
+Behavior Cloning & Imitation learning only (no RL) & $\sim$40--50\% \\
+\midrule
+\textbf{Target (PPO)} & \textbf{IL + RL fine-tuning} & \textbf{60--80\%} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.5em}
+\textbf{Secondary metrics} include:
+\begin{itemize}[nosep]
+    \item Average crowns per game (0--3 scale)
+    \item Elixir efficiency (damage dealt per elixir spent)
+    \item Game duration distribution
+    \item CV pipeline: detection accuracy (mAP) and inference latency (target: $<$100ms/frame)
+\end{itemize}
+
+\subsection{Qualitative Evaluation}
+
+We will verify the system works through several approaches:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{CV Pipeline Visualization:} Overlay detections on game frames to confirm accurate state extraction; verify unit identification and position accuracy.
+
+    \item \textbf{Decision Annotation:} Record gameplay videos with annotations showing which card was selected and the reasoning (based on attention weights or feature importance).
+
+    \item \textbf{Strategy Analysis:} Categorize agent behavior into recognizable patterns:
+    \begin{itemize}[nosep]
+        \item Does it learn to counter-push after defending?
+        \item Does it manage elixir effectively (not overcommitting)?
+        \item Does it respond appropriately to opponent actions?
+    \end{itemize}
+
+    \item \textbf{Failure Analysis:} Examine lost games to identify root causes---CV errors, poor timing, or strategic mistakes.
+\end{enumerate}
+
+\vspace{0.5em}
+\noindent\textbf{Success criteria:} A successful agent should exhibit hallmarks of competent play: waiting for sufficient elixir before committing, placing units in strategically sound positions, and responding appropriately to opponent actions.
+
+% ============== AI Tool Usage ==============
+\section{AI Tool Usage}
+
+We used AI tools (Claude) in the following aspects of this proposal:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Literature Review:} AI assisted in searching for and summarizing relevant academic papers (e.g., the KataCR paper on arXiv, the Clash Royale Challenge paper from FedCSIS 2019) and open-source projects (KataCR, CRBot-public).
+
+    \item \textbf{Technical Research:} AI helped identify available datasets (Kaggle 481M matches dataset, Clash Royale Replay Dataset), compare different technical approaches (online vs.\ offline RL, simulator vs.\ real game), and understand the architectures used in prior work.
+
+\end{enumerate}
+
+\vspace{0.5em}
+\noindent All AI-generated content was reviewed, verified against primary sources, and edited by team members. The core project ideas, specific technical decisions (e.g., choosing Google Play Games over emulators, focusing on real-game play rather than simulators), and evaluation criteria reflect our own analysis and judgment. We will continue to document AI tool usage throughout the project in our progress reports.
+
+% ============== References (Optional) =============
+\end{document}
