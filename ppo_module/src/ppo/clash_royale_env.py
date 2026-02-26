@@ -99,6 +99,10 @@ class EnvConfig:
     # Visualization
     visualize: bool = False  # Show live observation heatmaps
     vis_save_dir: str = ""  # Save visualization frames to this directory
+    vis_backend: str = "cv"  # "cv" for OpenCV side-by-side, "mpl" for matplotlib heatmaps
+    vis_record: bool = False  # Record video (cv backend only)
+    vis_output_path: str = ""  # Video output path (cv backend only)
+    vis_show_window: bool = True  # Show cv2.imshow window (cv backend only)
 
     # Logging
     verbose: bool = True
@@ -202,10 +206,21 @@ class ClashRoyaleEnv(gymnasium.Env):
         # Visualization
         self._visualizer = None
         if self._config.visualize:
-            from src.ppo.obs_visualizer import ObsVisualizer
-            self._visualizer = ObsVisualizer(
-                save_dir=self._config.vis_save_dir,
-            )
+            if self._config.vis_backend == "cv":
+                from src.ppo.cv_visualizer import CVVisualizer, CVVisConfig
+                vis_cfg = CVVisConfig(
+                    record=self._config.vis_record,
+                    output_path=self._config.vis_output_path or "vis_output.mp4",
+                    show_window=self._config.vis_show_window,
+                    game_frame_width=self._game_w,
+                    game_frame_height=self._game_h,
+                )
+                self._visualizer = CVVisualizer(vis_cfg)
+            else:
+                from src.ppo.obs_visualizer import ObsVisualizer
+                self._visualizer = ObsVisualizer(
+                    save_dir=self._config.vis_save_dir,
+                )
 
         if self._config.verbose:
             print(f"[Env] Initialized. Game bounds: ({gx},{gy}) {gw}x{gh}")
@@ -462,7 +477,19 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         # 5b. Update visualization
         if self._visualizer is not None:
-            self._visualizer.update(curr_obs, self._step_count)
+            if self._config.vis_backend == "cv":
+                self._visualizer.update(
+                    game_frame=frame,
+                    obs=curr_obs,
+                    step=self._step_count,
+                    info={
+                        "phase": phase.value,
+                        "episode_reward": self._episode_reward,
+                        "cards_played": self._cards_played,
+                    },
+                )
+            else:
+                self._visualizer.update(curr_obs, self._step_count)
 
         # 6. Compute reward
         reward = 0.0

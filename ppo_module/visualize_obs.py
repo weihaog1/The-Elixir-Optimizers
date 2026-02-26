@@ -90,6 +90,14 @@ def parse_args():
         "--no-perception", action="store_true",
         help="Disable YOLO detection (use zero-filled observations)",
     )
+    parser.add_argument(
+        "--cv", action="store_true",
+        help="Use OpenCV visualizer (side-by-side game frame + arena grid)",
+    )
+    parser.add_argument(
+        "--record", type=str, default="",
+        help="Record video to this file path (requires --cv)",
+    )
     return parser.parse_args()
 
 
@@ -106,6 +114,7 @@ def main():
             return 1
         capture_region = tuple(int(p.strip()) for p in parts)
 
+    vis_backend = "cv" if args.cv else "mpl"
     config = EnvConfig(
         window_title=args.window_title,
         capture_region=capture_region,
@@ -113,6 +122,9 @@ def main():
         dry_run=True,  # Never click
         visualize=True,
         vis_save_dir=args.save_dir,
+        vis_backend=vis_backend,
+        vis_record=bool(args.record),
+        vis_output_path=args.record,
         pause_between_episodes=False,
     )
 
@@ -151,6 +163,8 @@ def main():
     finally:
         env.close()
 
+    if args.record:
+        print(f"\n[Visualizer] Video saved to {args.record}")
     if args.save_dir:
         print(f"\n[Visualizer] Frames saved to {args.save_dir}/")
         print("  To make a video:")
