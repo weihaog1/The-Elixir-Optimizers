@@ -1239,6 +1239,58 @@ section > h2 {
    CR Card - Epic Rarity
    ========================================================================== */
 
+/* ==========================================================================
+   CR Card - Common Rarity
+   ========================================================================== */
+
+.cr-card--common .cr-card-frame {
+  border-color: #9E9E9E;
+  box-shadow: 0 4px 20px rgba(158, 158, 158, 0.25);
+}
+
+.cr-card--common .cr-card-info {
+  border-top-color: rgba(158, 158, 158, 0.35);
+}
+
+.cr-card--common .cr-card-rarity {
+  color: #BDBDBD;
+  text-shadow: 0 0 8px rgba(158, 158, 158, 0.5);
+}
+
+.cr-card--common:hover .cr-card-frame {
+  border-color: #BDBDBD;
+  box-shadow:
+    0 8px 32px rgba(158, 158, 158, 0.4),
+    0 0 16px rgba(189, 189, 189, 0.25);
+}
+
+
+/* ==========================================================================
+   CR Card - Rare Rarity
+   ========================================================================== */
+
+.cr-card--rare .cr-card-frame {
+  border-color: #F5A623;
+  box-shadow: 0 4px 20px rgba(245, 166, 35, 0.25);
+}
+
+.cr-card--rare .cr-card-info {
+  border-top-color: rgba(245, 166, 35, 0.35);
+}
+
+.cr-card--rare .cr-card-rarity {
+  color: #FFB74D;
+  text-shadow: 0 0 8px rgba(245, 166, 35, 0.5);
+}
+
+.cr-card--rare:hover .cr-card-frame {
+  border-color: #FFB74D;
+  box-shadow:
+    0 8px 32px rgba(245, 166, 35, 0.4),
+    0 0 16px rgba(255, 183, 77, 0.25);
+}
+
+
 .cr-card--epic .cr-card-frame {
   border-color: #7B2FBE;
   box-shadow: 0 4px 20px rgba(123, 47, 190, 0.25);

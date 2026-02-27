@@ -24,11 +24,10 @@ page_subtitle: "UC Irvine -- CS 175 Winter 2026"
           </a>
         </div>
       </div>
-      <div class="cr-card-rarity">Legendary</div>
     </div>
   </div>
 
-  <div class="cr-card cr-card--epic reveal reveal-delay-1">
+  <div class="cr-card cr-card--legendary reveal reveal-delay-1">
     <div class="cr-card-cost">5</div>
     <div class="cr-card-frame">
       <div class="cr-card-image">
@@ -46,7 +45,6 @@ page_subtitle: "UC Irvine -- CS 175 Winter 2026"
           </a>
         </div>
       </div>
-      <div class="cr-card-rarity">Epic</div>
     </div>
   </div>
 
@@ -68,7 +66,6 @@ page_subtitle: "UC Irvine -- CS 175 Winter 2026"
           </a>
         </div>
       </div>
-      <div class="cr-card-rarity">Legendary</div>
     </div>
   </div>
 </div>

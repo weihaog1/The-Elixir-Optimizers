@@ -1,0 +1,379 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    {
+      "id": "screen-cap",
+      "type": "rectangle",
+      "x": 60, "y": 40,
+      "width": 220, "height": 56,
+      "strokeColor": "#e67700",
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-screen-yolo", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "screen-cap-text",
+      "type": "text",
+      "x": 95, "y": 46,
+      "width": 150, "height": 44,
+      "text": "Screen Capture\n(mss, 2-4 FPS)",
+      "fontSize": 16,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "yolo",
+      "type": "rectangle",
+      "x": 60, "y": 180,
+      "width": 220, "height": 100,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-screen-yolo", "type": "arrow"},
+        {"id": "arr-yolo-sb", "type": "arrow"},
+        {"id": "arr-yolo-det", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "yolo-text",
+      "type": "text",
+      "x": 90, "y": 197,
+      "width": 160, "height": 66,
+      "text": "YOLOv8s (1x)\n155-class det.\n+ belonging pred.",
+      "fontSize": 16,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "state-builder",
+      "type": "rectangle",
+      "x": 380, "y": 180,
+      "width": 220, "height": 100,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-yolo-sb", "type": "arrow"},
+        {"id": "arr-sb-policy", "type": "arrow"},
+        {"id": "arr-sb-gs", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "sb-text",
+      "type": "text",
+      "x": 425, "y": 208,
+      "width": 130, "height": 44,
+      "text": "State Builder\n+ OCR + Cards",
+      "fontSize": 16,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "policy",
+      "type": "rectangle",
+      "x": 700, "y": 180,
+      "width": 220, "height": 100,
+      "strokeColor": "#7048e8",
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-sb-policy", "type": "arrow"},
+        {"id": "arr-policy-action", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "policy-text",
+      "type": "text",
+      "x": 740, "y": 208,
+      "width": 140, "height": 44,
+      "text": "Policy Network\n(BC / PPO)",
+      "fontSize": 16,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "det-output",
+      "type": "rectangle",
+      "x": 60, "y": 360,
+      "width": 220, "height": 80,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#a5d8ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "opacity": 40,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-yolo-det", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "det-text",
+      "type": "text",
+      "x": 105, "y": 370,
+      "width": 130, "height": 60,
+      "text": "Detections\n(x1,y1,x2,y2,\nconf, cls, bel)",
+      "fontSize": 14,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "gs-output",
+      "type": "rectangle",
+      "x": 380, "y": 360,
+      "width": 220, "height": 100,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "opacity": 40,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-sb-gs", "type": "arrow"},
+        {"id": "arr-gs-encoder", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "gs-text",
+      "type": "text",
+      "x": 430, "y": 370,
+      "width": 120, "height": 80,
+      "text": "GameState\nunits, towers,\nelixir, timer,\ncards, HP",
+      "fontSize": 14,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "action-output",
+      "type": "rectangle",
+      "x": 700, "y": 360,
+      "width": 220, "height": 80,
+      "strokeColor": "#7048e8",
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "opacity": 40,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-policy-action", "type": "arrow"},
+        {"id": "arr-action-pyautogui", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "action-text",
+      "type": "text",
+      "x": 730, "y": 380,
+      "width": 160, "height": 40,
+      "text": "Action index\n(card_id, col, row)",
+      "fontSize": 14,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "encoder",
+      "type": "rectangle",
+      "x": 380, "y": 540,
+      "width": 220, "height": 100,
+      "strokeColor": "#2f9e44",
+      "backgroundColor": "#b2f2bb",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-gs-encoder", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "encoder-text",
+      "type": "text",
+      "x": 420, "y": 550,
+      "width": 140, "height": 80,
+      "text": "StateEncoder\narena: (32,18,7)\nvector: (23,)\nmask: (2305,)",
+      "fontSize": 14,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "pyautogui",
+      "type": "rectangle",
+      "x": 700, "y": 520,
+      "width": 220, "height": 80,
+      "strokeColor": "#7048e8",
+      "backgroundColor": "#d0bfff",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "opacity": 100,
+      "roundness": {"type": 3},
+      "boundElements": [
+        {"id": "arr-action-pyautogui", "type": "arrow"}
+      ]
+    },
+    {
+      "id": "pyautogui-text",
+      "type": "text",
+      "x": 730, "y": 530,
+      "width": 160, "height": 60,
+      "text": "PyAutoGUI\nclick card slot,\nthen arena position",
+      "fontSize": 14,
+      "fontFamily": 4,
+      "textAlign": "center",
+      "strokeColor": "#1e1e1e"
+    },
+
+    {
+      "id": "arr-screen-yolo",
+      "type": "arrow",
+      "x": 170, "y": 96,
+      "width": 0, "height": 84,
+      "points": [[0, 0], [0, 84]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "screen-cap", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "yolo", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-yolo-sb",
+      "type": "arrow",
+      "x": 280, "y": 230,
+      "width": 100, "height": 0,
+      "points": [[0, 0], [100, 0]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "yolo", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "state-builder", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-sb-policy",
+      "type": "arrow",
+      "x": 600, "y": 230,
+      "width": 100, "height": 0,
+      "points": [[0, 0], [100, 0]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 2,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "state-builder", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "policy", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-yolo-det",
+      "type": "arrow",
+      "x": 170, "y": 280,
+      "width": 0, "height": 80,
+      "points": [[0, 0], [0, 80]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "yolo", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "det-output", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-sb-gs",
+      "type": "arrow",
+      "x": 490, "y": 280,
+      "width": 0, "height": 80,
+      "points": [[0, 0], [0, 80]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "state-builder", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "gs-output", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-policy-action",
+      "type": "arrow",
+      "x": 810, "y": 280,
+      "width": 0, "height": 80,
+      "points": [[0, 0], [0, 80]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "policy", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "action-output", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-gs-encoder",
+      "type": "arrow",
+      "x": 490, "y": 460,
+      "width": 0, "height": 80,
+      "points": [[0, 0], [0, 80]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "gs-output", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "encoder", "focus": 0, "gap": 5}
+    },
+
+    {
+      "id": "arr-action-pyautogui",
+      "type": "arrow",
+      "x": 810, "y": 440,
+      "width": 0, "height": 80,
+      "points": [[0, 0], [0, 80]],
+      "strokeColor": "#1e1e1e",
+      "strokeWidth": 1,
+      "roughness": 1,
+      "endArrowhead": "arrow",
+      "startBinding": {"elementId": "action-output", "focus": 0, "gap": 5},
+      "endBinding": {"elementId": "pyautogui", "focus": 0, "gap": 5}
+    }
+  ],
+  "appState": {"viewBackgroundColor": "#ffffff"},
+  "files": {}
+}
