@@ -887,11 +887,19 @@ card_selected -> different card click -> update card_id (changed mind)
 <div class="sp">
   <h3>Platform</h3>
 
-  <p><strong>Google Play Games (PC)</strong> -- Chosen over Android emulators (BlueStacks, LDPlayer) for native Windows performance and consistent rendering. The game runs at 1080x1920 resolution.</p>
+  <p><strong>Google Play Games (PC)</strong> -- Chosen over Android emulators (BlueStacks, LDPlayer) for native Windows performance and consistent rendering.</p>
 
   <h3 style="margin-top: 1.5rem;">AI Tool Usage</h3>
 
-  <p>We used <strong>Claude</strong> (Anthropic) as a coding assistant throughout the project for architecture design, code implementation, evaluation scripting, and documentation. All AI-generated code and content was reviewed, tested, and modified by team members. Technical decisions reflect the team's own analysis and domain knowledge.</p>
+  <p>We used <strong>Claude</strong> (Anthropic) as an auxiliary tool at specific points in the project:</p>
+
+  <ul>
+    <li><strong>Boilerplate and scaffolding:</strong> Claude helped generate initial code templates for repetitive tasks such as evaluation scripts, data loading utilities, and config file setup. All generated code was reviewed and adapted by team members.</li>
+    <li><strong>Documentation drafting:</strong> Claude assisted with drafting portions of design documents and this status report. All content was fact-checked against the codebase and rewritten where needed.</li>
+    <li><strong>Debugging assistance:</strong> When troubleshooting integration issues (e.g., coordinate system mismatches between modules), we occasionally consulted Claude for diagnostic suggestions.</li>
+  </ul>
+
+  <p>Core technical work -- model architecture selection, training strategy, synthetic data pipeline design, action space formulation, and the behavior cloning pipeline -- was carried out by the team through iterative experimentation and analysis of Clash Royale gameplay.</p>
 
 </div>
 </section>
