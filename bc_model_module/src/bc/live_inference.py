@@ -435,11 +435,25 @@ class PerceptionAdapter:
             "perception_active": False,
         }
 
+    # Map YOLO tower class names to vector HP slot indices.
+    # Vector layout: [3]=player_king_hp, [4]=player_left_princess_hp,
+    # [5]=player_right_princess_hp, [6]=enemy_king_hp,
+    # [7]=enemy_left_princess_hp, [8]=enemy_right_princess_hp
+    _TOWER_HP_SLOT: dict[str, tuple[int, bool]] = {
+        "king_tower_player": (3, True),
+        "princess_tower_left_player": (4, True),
+        "princess_tower_right_player": (5, True),
+        "king_tower_enemy": (6, False),
+        "princess_tower_left_enemy": (7, False),
+        "princess_tower_right_enemy": (8, False),
+    }
+
     def _process_with_detection(self, frame: np.ndarray) -> dict:
         """Tier 2: CRDetector with proper 6-channel arena encoding.
 
         Uses real CLASS_NAME_TO_ID for unit identity and UNIT_TYPE_MAP for
         channel assignment. CardPredictor populates vector card features.
+        Tower counts are derived from YOLO detections (not hardcoded).
 
         Arena channels:
           0: CH_CLASS_ID   - class_idx / NUM_CLASSES (0 = empty)
@@ -460,6 +474,11 @@ class PerceptionAdapter:
         fh, fw = frame.shape[:2]
 
         detection_dicts = []
+
+        # Tower tracking: count detected towers and mark HP slots
+        ally_tower_count = 0
+        enemy_tower_count = 0
+        tower_hp_detected = [False] * 6  # indices 3-8 in vector
 
         for det in detections:
             cx, cy = det.center
@@ -488,6 +507,16 @@ class PerceptionAdapter:
                 # Assume alive at full HP (no OCR in Tier 2)
                 ch = 3 if is_ally else 4  # CH_ALLY_TOWER_HP / CH_ENEMY_TOWER_HP
                 arena[0, row, col, ch] = 1.0
+
+                # Count tower and mark HP slot from class name
+                if is_ally:
+                    ally_tower_count += 1
+                else:
+                    enemy_tower_count += 1
+                tower_slot = self._TOWER_HP_SLOT.get(det.class_name)
+                if tower_slot is not None:
+                    vec_idx, _ = tower_slot
+                    tower_hp_detected[vec_idx - 3] = True
             elif unit_type == "spell":
                 # Additive spell count
                 arena[0, row, col, 5] += 1.0  # CH_SPELL
@@ -508,13 +537,19 @@ class PerceptionAdapter:
                 "_row": row,
             })
 
-        # Vector features with mid-game defaults
+        # Vector features
         vector = np.zeros((1, _NUM_VECTOR_FEATURES), dtype=np.float32)
-        vector[0, 0] = 0.5    # elixir / 10
+        vector[0, 0] = 0.5    # elixir / 10 (no OCR, assume mid-game)
         vector[0, 1] = 0.4    # time_remaining / 300
-        vector[0, 3:9] = 1.0  # all 6 towers alive at full HP
-        vector[0, 9] = 1.0    # player tower count / 3
-        vector[0, 10] = 1.0   # enemy tower count / 3
+
+        # Tower HP: only set 1.0 for towers actually detected by YOLO
+        for i in range(6):
+            if tower_hp_detected[i]:
+                vector[0, 3 + i] = 1.0  # detected = alive at full HP
+
+        # Tower counts from YOLO detections (no longer hardcoded)
+        vector[0, 9] = min(ally_tower_count, 3) / 3.0
+        vector[0, 10] = min(enemy_tower_count, 3) / 3.0
 
         # Count enemy units (non-tower, non-spell, top half of arena)
         enemy_count = sum(
@@ -530,7 +565,15 @@ class PerceptionAdapter:
         else:
             vector[0, 11:15] = 1.0  # assume all 4 cards present
 
-        mask = np.ones(_ACTION_SPACE_SIZE, dtype=np.bool_)
+        # Build elixir-aware action mask (block empty card slots)
+        mask = np.zeros(_ACTION_SPACE_SIZE, dtype=np.bool_)
+        mask[_NOOP_ACTION] = True  # noop always valid
+        for i in range(4):
+            if card_names[i] != "":
+                # Card detected in this slot — unmask all grid placements
+                start = i * _GRID_CELLS
+                end = start + _GRID_CELLS
+                mask[start:end] = True
 
         return {
             "obs": {

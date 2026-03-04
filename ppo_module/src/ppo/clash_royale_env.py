@@ -4,6 +4,10 @@ Wraps screen capture, perception, action execution, reward computation,
 and game phase detection into a standard Gymnasium interface compatible
 with sb3_contrib.MaskablePPO.
 
+Supports N-frame stacking: the policy sees concatenated observations from
+the last *n_frames* steps (arena channels and vector features), while the
+reward computer always operates on single-frame observations.
+
 Architecture:
     GameCapture (mss) -> PerceptionAdapter (YOLO/fallback) ->
     RewardComputer (obs deltas) -> ActionDispatcher (PyAutoGUI)
@@ -27,6 +31,7 @@ Usage:
 
 import msvcrt
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -93,6 +98,9 @@ class EnvConfig:
     # Device
     device: str = "cpu"
 
+    # Frame stacking
+    n_frames: int = 3  # Number of frames to stack (1 = no stacking)
+
     # Operator control
     pause_between_episodes: bool = True  # Wait for Enter between episodes
 
@@ -111,7 +119,8 @@ class EnvConfig:
 class ClashRoyaleEnv(gymnasium.Env):
     """Gymnasium environment wrapping live Clash Royale gameplay.
 
-    Observation space: Dict(arena=Box(32,18,6), vector=Box(23,))
+    Observation space (with n_frames=3):
+        Dict(arena=Box(32, 18, 18), vector=Box(69,))
     Action space: Discrete(2305)
     Supports action masking via action_masks() for MaskablePPO.
     """
@@ -126,17 +135,18 @@ class ClashRoyaleEnv(gymnasium.Env):
         super().__init__()
         self._config = config or EnvConfig()
         self._project_root = project_root
+        n = self._config.n_frames
 
-        # Define spaces
+        # Define spaces (frame-stacked dimensions)
         self.observation_space = spaces.Dict({
             "arena": spaces.Box(
                 low=-1.0, high=10.0,
-                shape=(_GRID_ROWS, _GRID_COLS, _NUM_ARENA_CHANNELS),
+                shape=(_GRID_ROWS, _GRID_COLS, _NUM_ARENA_CHANNELS * n),
                 dtype=np.float32,
             ),
             "vector": spaces.Box(
                 low=0.0, high=1.0,
-                shape=(_NUM_VECTOR_FEATURES,),
+                shape=(_NUM_VECTOR_FEATURES * n,),
                 dtype=np.float32,
             ),
         })
@@ -193,7 +203,7 @@ class ClashRoyaleEnv(gymnasium.Env):
         )
 
         # Episode state
-        self._prev_obs: Optional[dict[str, np.ndarray]] = None
+        self._raw_prev_obs: Optional[dict[str, np.ndarray]] = None
         self._current_mask: np.ndarray = np.ones(
             _ACTION_SPACE_SIZE, dtype=np.bool_
         )
@@ -202,6 +212,9 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._cards_played = 0
         self._identical_frame_count = 0
         self._prev_frame_hash: Optional[int] = None
+
+        # Frame stacking history (stores single-frame raw obs dicts)
+        self._obs_history: deque = deque(maxlen=n)
 
         # Visualization
         self._visualizer = None
@@ -226,8 +239,34 @@ class ClashRoyaleEnv(gymnasium.Env):
             print(f"[Env] Initialized. Game bounds: ({gx},{gy}) {gw}x{gh}")
             print(f"[Env] Perception: {self._perception.perception_active}")
             print(f"[Env] Dry run: {self._config.dry_run}")
+            print(f"[Env] Frame stacking: {n} frames")
             if self._visualizer:
                 print(f"[Env] Visualization ON (save_dir={self._config.vis_save_dir or 'none'})")
+
+    # ------------------------------------------------------------------
+    # Frame stacking helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _zero_obs() -> dict[str, np.ndarray]:
+        """Return a zero-filled single-frame observation for padding."""
+        return {
+            "arena": np.zeros((_GRID_ROWS, _GRID_COLS, _NUM_ARENA_CHANNELS), dtype=np.float32),
+            "vector": np.zeros((_NUM_VECTOR_FEATURES,), dtype=np.float32),
+        }
+
+    def _stack_obs(self) -> dict[str, np.ndarray]:
+        """Concatenate the obs history deque into a frame-stacked observation."""
+        arenas = [o["arena"] for o in self._obs_history]
+        vectors = [o["vector"] for o in self._obs_history]
+        return {
+            "arena": np.concatenate(arenas, axis=-1),   # (32, 18, 6*n)
+            "vector": np.concatenate(vectors, axis=-1),  # (23*n,)
+        }
+
+    # ------------------------------------------------------------------
+    # Utility methods
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _detect_game_bounds(
@@ -317,6 +356,10 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         return True, outcome, enemy_crowns, ally_crowns_lost
 
+    # ------------------------------------------------------------------
+    # Gymnasium interface
+    # ------------------------------------------------------------------
+
     def reset(
         self,
         seed: Optional[int] = None,
@@ -344,6 +387,11 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._identical_frame_count = 0
         self._prev_frame_hash = None
 
+        # Fill frame history with zero-padded observations
+        self._obs_history.clear()
+        for _ in range(self._config.n_frames - 1):
+            self._obs_history.append(self._zero_obs())
+
         if self._config.verbose:
             print("[Env] Waiting for game start... Press Battle in Clash Royale.")
 
@@ -362,7 +410,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         perception_result = self._perception.process_frame(frame)
 
         obs_np = self._obs_to_numpy(perception_result["obs"])
-        self._prev_obs = obs_np
+        self._raw_prev_obs = obs_np  # single-frame obs for reward computation
+        self._obs_history.append(obs_np)
 
         # Update action mask
         mask = perception_result["mask"]
@@ -372,6 +421,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             mask = mask[0]
         self._current_mask = mask.astype(np.bool_)
 
+        stacked_obs = self._stack_obs()
+
         info = {
             "perception_active": perception_result.get("perception_active", False),
             "step": 0,
@@ -380,7 +431,7 @@ class ClashRoyaleEnv(gymnasium.Env):
         if self._config.verbose:
             print("[Env] Game started. First observation captured.")
 
-        return obs_np, info
+        return stacked_obs, info
 
     def step(
         self, action: int,
@@ -463,9 +514,9 @@ class ClashRoyaleEnv(gymnasium.Env):
             if action != _NOOP_ACTION and exec_result.get("executed", False):
                 self._cards_played += 1
 
-        # 5. Run perception
+        # 5. Run perception (produces single-frame obs)
         perception_result = self._perception.process_frame(frame)
-        curr_obs = self._obs_to_numpy(perception_result["obs"])
+        curr_raw_obs = self._obs_to_numpy(perception_result["obs"])
 
         # Update action mask
         mask = perception_result["mask"]
@@ -475,12 +526,12 @@ class ClashRoyaleEnv(gymnasium.Env):
             mask = mask[0]
         self._current_mask = mask.astype(np.bool_)
 
-        # 5b. Update visualization
+        # 5b. Update visualization (uses single-frame obs)
         if self._visualizer is not None:
             if self._config.vis_backend == "cv":
                 self._visualizer.update(
                     game_frame=frame,
-                    obs=curr_obs,
+                    obs=curr_raw_obs,
                     step=self._step_count,
                     info={
                         "phase": phase.value,
@@ -489,18 +540,22 @@ class ClashRoyaleEnv(gymnasium.Env):
                     },
                 )
             else:
-                self._visualizer.update(curr_obs, self._step_count)
+                self._visualizer.update(curr_raw_obs, self._step_count)
 
-        # 6. Compute reward
+        # 6. Compute reward from SINGLE-FRAME obs (not stacked)
         reward = 0.0
-        if self._prev_obs is not None:
+        if self._raw_prev_obs is not None:
             reward = self._reward_computer.compute(
-                self._prev_obs, curr_obs, terminal_outcome=outcome,
+                self._raw_prev_obs, curr_raw_obs, terminal_outcome=outcome,
             )
         # Add manual crown reward (non-zero only when operator manually stopped)
         reward += manual_crown_reward
         self._episode_reward += reward
-        self._prev_obs = curr_obs
+        self._raw_prev_obs = curr_raw_obs
+
+        # Update frame stacking history and build stacked observation
+        self._obs_history.append(curr_raw_obs)
+        stacked_obs = self._stack_obs()
 
         # Layer 2: Observation anomaly detection (new game started mid-episode)
         anomaly_detected = self._reward_computer.new_game_detected
@@ -527,7 +582,7 @@ class ClashRoyaleEnv(gymnasium.Env):
         if terminated:
             info["episode_length"] = self._step_count
 
-        return curr_obs, reward, terminated, truncated, info
+        return stacked_obs, reward, terminated, truncated, info
 
     def action_masks(self) -> np.ndarray:
         """Return valid action mask for MaskablePPO.

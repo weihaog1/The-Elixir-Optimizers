@@ -4,14 +4,19 @@ Computes per-step rewards from observation vector deltas. Signals used:
 - Tower count changes (crown scored / crown lost)
 - Win/loss/draw terminal outcome
 - Survival bonus (small positive reward per step)
-- Elixir waste penalty (sitting at max elixir)
+- Graduated elixir waste penalty (mild at 8+, full at 9.5+)
+- Unit count advantage (ally vs enemy troop presence)
 
-No OCR required -- all signals come from the observation vector.
+All signals come from the observation tensors (vector + arena).
 
 Vector indices used:
     0: elixir / 10
     9: player tower count / 3
    10: enemy tower count / 3
+
+Arena channels used for unit advantage:
+    1: CH_BELONGING  (-1=ally, +1=enemy)
+    2: CH_ARENA_MASK (1.0=unit present)
 """
 
 from dataclasses import dataclass
@@ -30,9 +35,13 @@ class RewardConfig:
     loss_penalty: float = -30.0
     draw_penalty: float = -5.0
     survival_bonus: float = 0.02
-    elixir_waste_penalty: float = -0.05
+    elixir_waste_penalty: float = -0.1  # full penalty at max elixir
     elixir_waste_threshold: float = 0.95  # 9.5/10 elixir
+    elixir_high_penalty: float = -0.02  # mild penalty at 8+ elixir
+    elixir_high_threshold: float = 0.8  # 8/10 elixir
+    unit_advantage_weight: float = 0.01  # per-unit advantage reward
     reward_clamp: float = 15.0  # Per-step non-terminal reward ceiling
+    reward_scale: float = 0.1  # Scale all rewards for value fn stability
     tower_jump_threshold: float = 0.15  # Tower increase > this = new game anomaly
 
 
@@ -125,7 +134,7 @@ class RewardComputer:
                 # Reset internal state — skip crown deltas, return survival only
                 self._prev_ally_towers = curr_ally_towers
                 self._prev_enemy_towers = curr_enemy_towers
-                return cfg.survival_bonus
+                return cfg.survival_bonus * cfg.reward_scale
 
         # Track tower counts for anomaly detection on subsequent calls
         self._prev_ally_towers = curr_ally_towers
@@ -144,10 +153,25 @@ class RewardComputer:
         # --- Survival bonus ---
         reward += cfg.survival_bonus
 
-        # --- Elixir waste penalty ---
+        # --- Graduated elixir waste penalty ---
         curr_elixir = float(curr_vec[self._ELIXIR_IDX])
         if curr_elixir >= cfg.elixir_waste_threshold:
-            reward += cfg.elixir_waste_penalty
+            reward += cfg.elixir_waste_penalty  # full penalty at 9.5+
+        elif curr_elixir >= cfg.elixir_high_threshold:
+            reward += cfg.elixir_high_penalty  # mild penalty at 8.0+
+
+        # --- Unit count advantage (from arena grid) ---
+        if "arena" in curr_obs:
+            arena = curr_obs["arena"]
+            if arena.ndim == 4:
+                arena = arena[0]
+            arena_mask = arena[:, :, 2]    # CH_ARENA_MASK
+            belonging = arena[:, :, 1]     # CH_BELONGING: -1=ally, +1=enemy
+            occupied = arena_mask > 0.5
+            ally_units = int(np.sum(occupied & (belonging < 0)))
+            enemy_units = int(np.sum(occupied & (belonging > 0)))
+            advantage = ally_units - enemy_units
+            reward += cfg.unit_advantage_weight * advantage
 
         # --- Clamp non-terminal reward ---
         reward = max(-cfg.reward_clamp, min(cfg.reward_clamp, reward))
@@ -160,7 +184,7 @@ class RewardComputer:
         elif terminal_outcome == "draw":
             reward += cfg.draw_penalty
 
-        return reward
+        return reward * cfg.reward_scale
 
     def compute_manual_crowns(
         self, enemy_crowns: int, ally_crowns_lost: int,
@@ -168,8 +192,10 @@ class RewardComputer:
         """Compute crown reward from manually-provided crown counts.
 
         Used when the operator manually ends an episode and reports
-        crowns scored/lost (since tower counts in the observation vector
-        are hardcoded and don't change during live play).
+        crowns scored/lost. Serves as a fallback/override — automatic
+        crown tracking from YOLO tower detection now works for normal
+        gameplay, but manual input is still useful when the operator
+        stops the episode early.
 
         Args:
             enemy_crowns: Number of enemy towers destroyed (0-3).
@@ -181,4 +207,4 @@ class RewardComputer:
         reward = 0.0
         reward += enemy_crowns * self.config.enemy_crown_reward
         reward += ally_crowns_lost * self.config.ally_crown_penalty
-        return reward
+        return reward * self.config.reward_scale

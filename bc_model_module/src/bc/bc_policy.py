@@ -53,10 +53,14 @@ class BCPolicy(nn.Module):
         features_dim: int = 192,
         hidden_dim: int = 256,
         dropout: float = 0.2,
+        n_frames: int = 1,
     ) -> None:
         super().__init__()
         self.features_dim = features_dim
-        self.feature_extractor = CRFeatureExtractor(features_dim=features_dim)
+        self.n_frames = n_frames
+        self.feature_extractor = CRFeatureExtractor(
+            features_dim=features_dim, n_frames=n_frames,
+        )
 
         # Shared trunk for all heads
         self.shared_trunk = nn.Sequential(

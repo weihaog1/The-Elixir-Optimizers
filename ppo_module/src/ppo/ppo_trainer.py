@@ -14,6 +14,7 @@ Usage:
 """
 
 import json
+import math
 import os
 import time
 from dataclasses import dataclass, field
@@ -21,7 +22,7 @@ from typing import Optional
 
 import torch
 
-from src.ppo.callbacks import CRMetricsCallback
+from src.ppo.callbacks import CRMetricsCallback, EntropyScheduleCallback
 from src.ppo.clash_royale_env import ClashRoyaleEnv, EnvConfig
 from src.ppo.reward import RewardConfig
 from src.ppo.sb3_feature_extractor import SB3CRFeatureExtractor
@@ -41,22 +42,27 @@ class PPOConfig:
     # PPO hyperparameters
     learning_rate: float = 1e-4
     clip_range: float = 0.1
-    n_steps: int = 512
+    n_steps: int = 700
     batch_size: int = 64
     n_epochs: int = 10
     gamma: float = 0.99
     gae_lambda: float = 0.95
-    ent_coef: float = 0.01
+    ent_coef: float = 0.02
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
 
+    # Entropy annealing
+    ent_coef_start: float = 0.02
+    ent_coef_end: float = 0.005
+
     # Feature extractor
     features_dim: int = 192
+    n_frames: int = 3
     freeze_extractor: bool = False
 
     # Network architecture
-    pi_layers: list[int] = field(default_factory=lambda: [128, 64])
-    vf_layers: list[int] = field(default_factory=lambda: [128, 64])
+    pi_layers: list[int] = field(default_factory=lambda: [256, 128])
+    vf_layers: list[int] = field(default_factory=lambda: [256, 128])
 
     # Output
     output_dir: str = "models/ppo/"
@@ -68,6 +74,10 @@ class PPOConfig:
 
     # Resume
     resume_path: str = ""
+
+    # BC KL penalty
+    bc_policy_path: str = ""
+    kl_coef: float = 0.1
 
 
 class PPOTrainer:
@@ -99,16 +109,28 @@ class PPOTrainer:
 
         cfg = self.config
 
+        # Cosine annealing LR schedule: lr -> lr * 0.1
+        base_lr = cfg.learning_rate
+        min_lr = base_lr * 0.1
+
+        def _lr_schedule(progress_remaining: float) -> float:
+            return min_lr + 0.5 * (base_lr - min_lr) * (
+                1 + math.cos(math.pi * (1 - progress_remaining))
+            )
+
         model = MaskablePPO(
             "MultiInputPolicy",
             env,
             policy_kwargs={
                 "features_extractor_class": SB3CRFeatureExtractor,
-                "features_extractor_kwargs": {"features_dim": cfg.features_dim},
+                "features_extractor_kwargs": {
+                    "features_dim": cfg.features_dim,
+                    "n_frames": cfg.n_frames,
+                },
                 "net_arch": dict(pi=cfg.pi_layers, vf=cfg.vf_layers),
                 "activation_fn": torch.nn.ReLU,
             },
-            learning_rate=cfg.learning_rate,
+            learning_rate=_lr_schedule,
             clip_range=cfg.clip_range,
             n_steps=cfg.n_steps,
             batch_size=cfg.batch_size,
@@ -180,23 +202,50 @@ class PPOTrainer:
             print("[PPOTrainer] Creating new MaskablePPO model...")
             self._model = self._create_model(self._env)
 
-        # Metrics callback
+        # Callbacks
+        callbacks = []
+
         metrics_cb = CRMetricsCallback(
             window_size=10,
             log_path=os.path.join(cfg.log_dir, "training_log.jsonl"),
             verbose=cfg.verbose,
         )
+        callbacks.append(metrics_cb)
+
+        # Entropy annealing callback
+        entropy_cb = EntropyScheduleCallback(
+            start=cfg.ent_coef_start,
+            end=cfg.ent_coef_end,
+            total_episodes=num_episodes,
+        )
+        callbacks.append(entropy_cb)
+
+        # BC KL penalty callback (optional)
+        if cfg.bc_policy_path and cfg.kl_coef > 0:
+            from src.ppo.bc_reference import BCReferenceCallback
+
+            bc_kl_cb = BCReferenceCallback(
+                bc_policy_path=cfg.bc_policy_path,
+                kl_coef=cfg.kl_coef,
+                device=cfg.device,
+            )
+            callbacks.append(bc_kl_cb)
 
         print(f"\n{'=' * 60}")
         print(f"[PPOTrainer] Starting PPO training: {num_episodes} episodes")
         print(f"  BC weights: {cfg.bc_weights_path or '(none)'}")
         print(f"  Frozen extractor: {cfg.freeze_extractor}")
-        print(f"  LR: {cfg.learning_rate}")
+        print(f"  LR: {cfg.learning_rate} (cosine annealing)")
+        print(f"  Entropy: {cfg.ent_coef_start} -> {cfg.ent_coef_end}")
         print(f"  Clip range: {cfg.clip_range}")
         print(f"  n_steps: {cfg.n_steps}")
         print(f"  n_epochs: {cfg.n_epochs}")
+        print(f"  n_frames: {cfg.n_frames}")
+        print(f"  Network: pi={cfg.pi_layers}, vf={cfg.vf_layers}")
         print(f"  Device: {cfg.device}")
         print(f"  Output: {cfg.output_dir}")
+        if cfg.bc_policy_path:
+            print(f"  BC KL penalty: coef={cfg.kl_coef}")
         print(f"{'=' * 60}\n")
 
         # Semi-automated episode loop
@@ -213,7 +262,7 @@ class PPOTrainer:
                 # This calls env.reset() internally on first call or after done
                 self._model.learn(
                     total_timesteps=cfg.n_steps,
-                    callback=metrics_cb,
+                    callback=callbacks,
                     reset_num_timesteps=False,
                     progress_bar=False,
                 )

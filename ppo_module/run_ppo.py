@@ -120,8 +120,8 @@ def parse_args():
         help="PPO clip range (default: 0.1)",
     )
     parser.add_argument(
-        "--n-steps", type=int, default=512,
-        help="Steps per rollout (default: 512)",
+        "--n-steps", type=int, default=700,
+        help="Steps per rollout (default: 700)",
     )
     parser.add_argument(
         "--n-epochs", type=int, default=10,
@@ -132,8 +132,32 @@ def parse_args():
         help="Batch size (default: 64)",
     )
     parser.add_argument(
-        "--ent-coef", type=float, default=0.01,
-        help="Entropy coefficient (default: 0.01)",
+        "--ent-coef", type=float, default=0.02,
+        help="Starting entropy coefficient (default: 0.02)",
+    )
+    parser.add_argument(
+        "--ent-start", type=float, default=0.02,
+        help="Starting entropy coefficient for annealing (default: 0.02)",
+    )
+    parser.add_argument(
+        "--ent-end", type=float, default=0.005,
+        help="Ending entropy coefficient for annealing (default: 0.005)",
+    )
+    parser.add_argument(
+        "--n-frames", type=int, default=3,
+        help="Frame stack depth (default: 3)",
+    )
+    parser.add_argument(
+        "--reward-scale", type=float, default=0.1,
+        help="Reward scaling factor (default: 0.1)",
+    )
+    parser.add_argument(
+        "--bc-policy", type=str, default="",
+        help="Path to full BC policy for KL penalty reference",
+    )
+    parser.add_argument(
+        "--kl-coef", type=float, default=0.0,
+        help="KL penalty coefficient from BC reference (0 = disabled)",
     )
     parser.add_argument(
         "--freeze-extractor", action="store_true",
@@ -200,17 +224,20 @@ def main():
         capture_region = tuple(int(p.strip()) for p in parts)
 
     # Build configs
+    reward_config = RewardConfig(reward_scale=args.reward_scale)
+
     env_config = EnvConfig(
         window_title=args.window_title,
         capture_region=capture_region,
         use_perception=not args.no_perception,
         dry_run=args.dry_run,
-        reward_config=RewardConfig(),
+        reward_config=reward_config,
         templates_dir=args.templates_dir,
         device=args.device,
         pause_between_episodes=not args.no_pause,
         visualize=args.visualize,
         vis_save_dir=args.vis_save_dir,
+        n_frames=args.n_frames,
     )
 
     ppo_config = PPOConfig(
@@ -223,11 +250,16 @@ def main():
         batch_size=args.batch_size,
         n_epochs=args.n_epochs,
         ent_coef=args.ent_coef,
+        ent_coef_start=args.ent_start,
+        ent_coef_end=args.ent_end,
+        n_frames=args.n_frames,
         freeze_extractor=args.freeze_extractor,
         output_dir=args.output_dir,
         log_dir=args.log_dir,
         device=args.device,
         resume_path=args.resume,
+        bc_policy_path=args.bc_policy,
+        kl_coef=args.kl_coef,
     )
 
     trainer = PPOTrainer(ppo_config)

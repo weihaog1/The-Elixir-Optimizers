@@ -152,3 +152,40 @@ class CRMetricsCallback(BaseCallback):
             print(f"  Avg reward: {sum(self._rewards) / n:.1f}")
             print(f"  Avg cards/episode: {sum(self._cards_played) / n:.1f}")
             print(f"{'=' * 50}")
+
+
+class EntropyScheduleCallback(BaseCallback):
+    """Linearly anneals the entropy coefficient over training episodes.
+
+    SB3's ent_coef does not natively support callables, so this callback
+    modifies model.ent_coef after each detected episode completion.
+
+    Args:
+        start: Starting entropy coefficient.
+        end: Final entropy coefficient.
+        total_episodes: Expected number of training episodes.
+    """
+
+    def __init__(
+        self,
+        start: float = 0.02,
+        end: float = 0.005,
+        total_episodes: int = 15,
+    ) -> None:
+        super().__init__()
+        self.start = start
+        self.end = end
+        self.total_episodes = max(total_episodes, 1)
+        self._episode_count = 0
+
+    def _on_step(self) -> bool:
+        for info in self.locals.get("infos", []):
+            if "outcome" in info or "episode_length" in info:
+                self._episode_count += 1
+                progress = min(self._episode_count / self.total_episodes, 1.0)
+                new_ent = self.start + (self.end - self.start) * progress
+                self.model.ent_coef = new_ent
+
+                if self.logger is not None:
+                    self.logger.record("cr/ent_coef", new_ent)
+        return True

@@ -4,8 +4,13 @@ Loads .npz files produced by DatasetBuilder (dataset_builder_module) and
 provides (arena, vector, action, mask) samples for training. Includes
 file-level train/val splitting to prevent data leakage between frames
 of the same game, and class weight computation for weighted cross-entropy.
+
+Supports frame stacking via the ``n_frames`` parameter. When ``n_frames > 1``,
+consecutive frames from the same game file are concatenated along the
+channel/feature axis. Frames before the start of a file are zero-padded.
 """
 
+import bisect
 import random
 from pathlib import Path
 
@@ -36,24 +41,38 @@ class BCDataset(Dataset):
     columns are reversed, and action/mask indices are remapped so that
     ``col`` becomes ``GRID_COLS - 1 - col``.
 
+    When ``n_frames > 1``, each sample returns stacked observations from
+    consecutive frames in the same game file. Arena becomes
+    ``(32, 18, 6*n_frames)`` and vector becomes ``(23*n_frames,)``.
+
     Args:
         npz_paths: List of Path objects pointing to .npz files.
         augment: If True, enable horizontal flip augmentation (2x data).
+        n_frames: Number of consecutive frames to stack (default 1).
     """
 
-    def __init__(self, npz_paths: list[Path], augment: bool = False) -> None:
+    def __init__(
+        self, npz_paths: list[Path], augment: bool = False, n_frames: int = 1,
+    ) -> None:
         super().__init__()
         arenas = []
         vectors = []
         actions = []
         masks = []
 
+        # Track file boundaries for frame stacking
+        self._file_starts: list[int] = []
+        offset = 0
+
         for path in npz_paths:
+            self._file_starts.append(offset)
             data = np.load(str(path))
+            n = len(data["actions"])
             arenas.append(data["obs_arena"])
             vectors.append(data["obs_vector"])
             actions.append(data["actions"])
             masks.append(data["masks"])
+            offset += n
 
         self.arenas = np.concatenate(arenas, axis=0)
         self.vectors = np.concatenate(vectors, axis=0)
@@ -62,6 +81,7 @@ class BCDataset(Dataset):
 
         self._augment = augment
         self._n_real = len(self.actions)
+        self.n_frames = n_frames
 
         if augment:
             # Precompute index mapping for horizontal flip.
@@ -86,6 +106,37 @@ class BCDataset(Dataset):
             return 2 * self._n_real
         return self._n_real
 
+    def _get_stacked(self, idx: int) -> tuple[np.ndarray, np.ndarray]:
+        """Get stacked arena and vector for n_frames consecutive frames.
+
+        Frames before the start of the file are zero-padded to prevent
+        cross-game contamination.
+
+        Args:
+            idx: Global frame index.
+
+        Returns:
+            (arena, vector) with shapes (32, 18, 6*n_frames) and (23*n_frames,).
+        """
+        file_pos = bisect.bisect_right(self._file_starts, idx) - 1
+        file_start = self._file_starts[file_pos]
+
+        arena_frames = []
+        vec_frames = []
+        for f in range(self.n_frames):
+            src = idx - (self.n_frames - 1 - f)
+            if src < file_start:
+                arena_frames.append(np.zeros((32, 18, 6), dtype=np.float32))
+                vec_frames.append(np.zeros(23, dtype=np.float32))
+            else:
+                arena_frames.append(self.arenas[src])
+                vec_frames.append(self.vectors[src])
+
+        return (
+            np.concatenate(arena_frames, axis=-1),
+            np.concatenate(vec_frames, axis=-1),
+        )
+
     def __getitem__(self, idx: int) -> dict:
         """Get a single training sample.
 
@@ -93,36 +144,41 @@ class BCDataset(Dataset):
         flipped version: arena columns reversed, action and mask indices
         remapped.
 
+        When n_frames > 1, returns stacked observations from consecutive
+        frames in the same game file.
+
         Returns:
             Dict with keys:
-                "arena": (32, 18, 6) float32 tensor
-                "vector": (23,) float32 tensor
+                "arena": (32, 18, 6*n_frames) float32 tensor
+                "vector": (23*n_frames,) float32 tensor
                 "action": scalar long tensor
                 "mask": (2305,) bool tensor
         """
-        if self._augment and idx >= self._n_real:
-            real_idx = idx - self._n_real
-            # Flip arena columns (axis 1 of shape 32,18,6)
-            arena = self.arenas[real_idx][:, ::-1, :].copy()
+        is_flipped = self._augment and idx >= self._n_real
+        real_idx = idx - self._n_real if is_flipped else idx
+
+        # Get observation (stacked or single-frame)
+        if self.n_frames > 1:
+            arena, vector = self._get_stacked(real_idx)
+        else:
+            arena = self.arenas[real_idx]
             vector = self.vectors[real_idx]
-            action = int(self.actions[real_idx])
-            # Remap action index
+
+        action = int(self.actions[real_idx])
+        mask = self.masks[real_idx]
+
+        if is_flipped:
+            # Flip arena columns (axis 1 of shape 32,18,6*n)
+            arena = arena[:, ::-1, :].copy()
             if action != NOOP_ACTION:
                 action = int(self._flip_indices[action])
-            # Remap mask using the flip permutation
-            mask = self.masks[real_idx][self._flip_indices].copy()
-            return {
-                "arena": torch.from_numpy(arena).float(),
-                "vector": torch.from_numpy(vector.copy()).float(),
-                "action": torch.tensor(action, dtype=torch.long),
-                "mask": torch.from_numpy(mask).bool(),
-            }
+            mask = mask[self._flip_indices].copy()
 
         return {
-            "arena": torch.from_numpy(self.arenas[idx]).float(),
-            "vector": torch.from_numpy(self.vectors[idx]).float(),
-            "action": torch.tensor(self.actions[idx], dtype=torch.long),
-            "mask": torch.from_numpy(self.masks[idx].copy()).bool(),
+            "arena": torch.from_numpy(np.ascontiguousarray(arena)).float(),
+            "vector": torch.from_numpy(np.ascontiguousarray(vector)).float(),
+            "action": torch.tensor(action, dtype=torch.long),
+            "mask": torch.from_numpy(np.ascontiguousarray(mask)).bool(),
         }
 
     def action_class_counts(self) -> tuple[int, int]:
@@ -163,6 +219,7 @@ def load_datasets(
     val_ratio: float = 0.2,
     seed: int = 42,
     augment: bool = False,
+    n_frames: int = 1,
 ) -> tuple[BCDataset, BCDataset]:
     """Split .npz files into train and validation datasets.
 
@@ -174,6 +231,7 @@ def load_datasets(
         val_ratio: Fraction of files for validation (default 0.2).
         seed: Random seed for reproducible splitting.
         augment: Enable horizontal flip augmentation on training set.
+        n_frames: Number of consecutive frames to stack (default 1).
 
     Returns:
         (train_dataset, val_dataset) tuple of BCDataset instances.
@@ -191,4 +249,7 @@ def load_datasets(
         val_paths = [train_paths.pop()]
 
     # Augmentation only on training set (validation stays clean)
-    return BCDataset(train_paths, augment=augment), BCDataset(val_paths)
+    return (
+        BCDataset(train_paths, augment=augment, n_frames=n_frames),
+        BCDataset(val_paths, n_frames=n_frames),
+    )

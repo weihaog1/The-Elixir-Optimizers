@@ -8,7 +8,7 @@ Usage:
 
     model = MaskablePPO("MultiInputPolicy", env, policy_kwargs={
         "features_extractor_class": SB3CRFeatureExtractor,
-        "features_extractor_kwargs": {"features_dim": 192},
+        "features_extractor_kwargs": {"features_dim": 192, "n_frames": 3},
     })
 
     # Load BC pretrained weights
@@ -28,11 +28,19 @@ class SB3CRFeatureExtractor(BaseFeaturesExtractor):
     Args:
         observation_space: Gymnasium Dict observation space.
         features_dim: Output feature dimension (default 192).
+        n_frames: Number of stacked frames (default 1).
     """
 
-    def __init__(self, observation_space, features_dim: int = 192) -> None:
+    def __init__(
+        self,
+        observation_space,
+        features_dim: int = 192,
+        n_frames: int = 1,
+    ) -> None:
         super().__init__(observation_space, features_dim=features_dim)
-        self._extractor = CRFeatureExtractor(features_dim=features_dim)
+        self._extractor = CRFeatureExtractor(
+            features_dim=features_dim, n_frames=n_frames,
+        )
 
     def forward(self, observations: dict[str, torch.Tensor]) -> torch.Tensor:
         return self._extractor(observations)

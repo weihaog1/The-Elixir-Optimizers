@@ -85,6 +85,7 @@ class TrainConfig:
     entropy_coeff: float = 0.01
     label_smoothing: float = 0.1
     augment: bool = True
+    n_frames: int = 1
 
 
 class BCTrainer:
@@ -154,7 +155,7 @@ class BCTrainer:
         # Datasets (file-level split)
         train_dataset, val_dataset = load_datasets(
             npz_paths, val_ratio=cfg.val_ratio, seed=cfg.seed,
-            augment=cfg.augment,
+            augment=cfg.augment, n_frames=cfg.n_frames,
         )
         noop_count, action_count = train_dataset.action_class_counts()
         val_noop, val_action = val_dataset.action_class_counts()
@@ -186,7 +187,7 @@ class BCTrainer:
         )
 
         # Model
-        policy = BCPolicy().to(device)
+        policy = BCPolicy(n_frames=cfg.n_frames).to(device)
         param_count = sum(p.numel() for p in policy.parameters())
         print(f"Model parameters: {param_count:,}")
 
@@ -561,6 +562,10 @@ def main() -> None:
         "--no_augment", action="store_true",
         help="Disable horizontal flip data augmentation",
     )
+    parser.add_argument(
+        "--n_frames", type=int, default=1,
+        help="Frame stack depth (default: 1, use 3 for temporal context)",
+    )
     args = parser.parse_args()
 
     npz_paths = sorted(Path(args.data_dir).glob("*.npz"))
@@ -580,6 +585,7 @@ def main() -> None:
         entropy_coeff=args.entropy_coeff,
         label_smoothing=args.label_smoothing,
         augment=not args.no_augment,
+        n_frames=args.n_frames,
     )
     trainer = BCTrainer(config)
     trainer.train_loop(npz_paths, args.output_dir)
