@@ -172,7 +172,24 @@ class ClashRoyaleEnv(gymnasium.Env):
         # Initialize components
         self._capture = GameCapture(self._live_config)
 
-        # Detect game bounds from probe frame
+        # Detect game bounds from probe frame.
+        # Wait for the game window to be in focus first, since mss captures
+        # screen pixels — if VS Code is covering the game, the probe will
+        # detect wrong bounds that persist for the entire session.
+        hwnd = self._capture.get_window_hwnd()
+        if hwnd is not None:
+            import ctypes
+            for _ in range(30):  # wait up to 15s for focus
+                try:
+                    if ctypes.windll.user32.GetForegroundWindow() == hwnd:
+                        break
+                except Exception:
+                    break
+                time.sleep(0.5)
+            else:
+                print("[Env] WARNING: Game window not focused for probe. "
+                      "Bounds may be incorrect.")
+
         probe = self._capture.capture()
         gx, gy, gw, gh = self._detect_game_bounds(probe)
         self._game_x_offset = gx
@@ -263,6 +280,28 @@ class ClashRoyaleEnv(gymnasium.Env):
             "arena": np.concatenate(arenas, axis=-1),   # (32, 18, 6*n)
             "vector": np.concatenate(vectors, axis=-1),  # (23*n,)
         }
+
+    # ------------------------------------------------------------------
+    # Window focus
+    # ------------------------------------------------------------------
+
+    def _is_game_focused(self) -> bool:
+        """Check if the game window is the foreground window.
+
+        mss captures screen pixels (not window content), so if another
+        window covers the game, captured frames will be garbage. This
+        method detects that situation.
+
+        Returns True if focused or if focus cannot be checked.
+        """
+        hwnd = self._capture.get_window_hwnd()
+        if hwnd is None:
+            return True  # Can't check, assume focused
+        try:
+            import ctypes
+            return ctypes.windll.user32.GetForegroundWindow() == hwnd
+        except Exception:
+            return True
 
     # ------------------------------------------------------------------
     # Utility methods
@@ -394,17 +433,31 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         if self._config.verbose:
             print("[Env] Waiting for game start... Press Battle in Clash Royale.")
+            print("[Env] Keep game window visible (don't alt-tab over it).")
 
-        # Wait for game to start (use cropped frames so detector regions align)
+        # Focus-aware capture: only feed frames to detector when game is focused.
+        # When unfocused, return a black frame so the detector stays in UNKNOWN/LOADING
+        # instead of falsely triggering IN_GAME or END_SCREEN from non-game pixels.
+        _black_frame = None
+
+        def _focused_capture():
+            nonlocal _black_frame
+            frame = self._crop_game_region(self._capture.capture())
+            if not self._is_game_focused():
+                if _black_frame is None or _black_frame.shape != frame.shape:
+                    _black_frame = np.zeros_like(frame)
+                return _black_frame
+            return frame
+
         started = self._game_detector.wait_for_game_start(
-            capture_fn=lambda: self._crop_game_region(self._capture.capture()),
+            capture_fn=_focused_capture,
             timeout=self._config.game_start_timeout,
         )
         if not started:
             if self._config.verbose:
                 print("[Env] WARNING: Game start timeout. Proceeding anyway.")
 
-        # Capture initial frame and run perception
+        # Capture initial frame and run perception (wait for focus if needed)
         frame = self._capture.capture()
         frame = self._crop_game_region(frame)
         perception_result = self._perception.process_frame(frame)
@@ -423,13 +476,18 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         stacked_obs = self._stack_obs()
 
+        # Log initial perception state
+        card_names = perception_result.get("card_names", [])
+        valid_card_actions = int(self._current_mask[:_ACTION_SPACE_SIZE - 1].sum())
         info = {
             "perception_active": perception_result.get("perception_active", False),
             "step": 0,
         }
 
         if self._config.verbose:
-            print("[Env] Game started. First observation captured.")
+            print(f"[Env] Game started. Initial cards: {card_names}")
+            print(f"[Env] Initial mask: {int(self._current_mask.sum())} valid "
+                  f"actions ({valid_card_actions} card placements)")
 
         return stacked_obs, info
 
@@ -475,6 +533,39 @@ class ClashRoyaleEnv(gymnasium.Env):
         # 1. Capture frame FIRST (before any action)
         frame = self._capture.capture()
         frame = self._crop_game_region(frame)
+
+        # Focus guard: if the game window is not the foreground window,
+        # mss captured non-game pixels (e.g. VS Code). Skip processing
+        # and reuse the previous observation to avoid corrupting the
+        # episode with garbage frames.
+        game_focused = self._is_game_focused()
+        if not game_focused and not terminated:
+            self._unfocused_count = getattr(self, "_unfocused_count", 0) + 1
+            if self._unfocused_count == 1 and self._config.verbose:
+                print(f"[Env] WARNING step {self._step_count}: Game window lost "
+                      f"focus — skipping frame capture until refocused.")
+
+            # Reuse previous stacked obs, give survival-only reward
+            stacked_obs = self._stack_obs()
+            cfg = self._config.reward_config
+            reward = cfg.survival_bonus * cfg.reward_scale
+            self._episode_reward += reward
+
+            info = {
+                "step": self._step_count,
+                "action": action,
+                "action_executed": False,
+                "action_reason": "window_not_focused",
+                "phase": "in_game",
+                "perception_active": False,
+                "episode_reward": self._episode_reward,
+                "cards_played": self._cards_played,
+                "anomaly_detected": False,
+                "truncation_reason": truncation_reason,
+            }
+            return stacked_obs, reward, terminated, truncated, info
+        else:
+            self._unfocused_count = 0
 
         # 2. Check for identical frames (freeze detection)
         fhash = self._frame_hash(frame)
@@ -525,6 +616,13 @@ class ClashRoyaleEnv(gymnasium.Env):
         if mask.ndim == 2:
             mask = mask[0]
         self._current_mask = mask.astype(np.bool_)
+
+        # Mask validation: warn if all card actions are masked
+        valid_card_actions = int(self._current_mask[:_ACTION_SPACE_SIZE - 1].sum())
+        if valid_card_actions == 0 and self._config.verbose:
+            card_names = perception_result.get("card_names", [])
+            print(f"[Env] WARNING step {self._step_count}: All card actions "
+                  f"masked! Only NOOP available. cards={card_names}")
 
         # 5b. Update visualization (uses single-frame obs)
         if self._visualizer is not None:

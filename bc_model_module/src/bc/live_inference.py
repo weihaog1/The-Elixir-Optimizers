@@ -564,6 +564,7 @@ class PerceptionAdapter:
             card_names = self._populate_card_vector(frame, vector, fw, fh)
         else:
             vector[0, 11:15] = 1.0  # assume all 4 cards present
+            card_names = ["unknown"] * 4  # unmask all card slots
 
         # Build elixir-aware action mask (block empty card slots)
         mask = np.zeros(_ACTION_SPACE_SIZE, dtype=np.bool_)
