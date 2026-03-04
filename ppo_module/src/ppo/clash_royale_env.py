@@ -206,6 +206,17 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._game_w = gw
         self._game_h = gh
 
+        # Sanity check: game region should be portrait (aspect < 0.7)
+        cap_w, cap_h = self._capture.get_frame_size()
+        aspect = gw / max(gh, 1)
+        src = "manual" if self._config.game_region else "auto-detected"
+        print(f"[Env] Capture: {cap_w}x{cap_h}. "
+              f"Game bounds ({src}): ({gx},{gy}) {gw}x{gh} "
+              f"(aspect={aspect:.2f})")
+        if aspect > 0.7:
+            print(f"[Env] WARNING: Game region is landscape ({gw}x{gh}). "
+                  f"Expected portrait (~609x1077). Check --game-region values.")
+
         # Update window offset for dispatcher
         wl, wt = self._capture.get_window_offset()
         self._live_config.window_left = wl + gx
