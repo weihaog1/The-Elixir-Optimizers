@@ -566,15 +566,17 @@ class PerceptionAdapter:
             vector[0, 11:15] = 1.0  # assume all 4 cards present
             card_names = ["unknown"] * 4  # unmask all card slots
 
-        # Build elixir-aware action mask (block empty card slots)
+        # Build action mask: only player's half of the arena (rows 17-31).
+        # In Clash Royale, you can only deploy units on your side.
+        _DEPLOY_ROW_START = 17  # PLAYER_HALF_ROW_START from encoder_constants
         mask = np.zeros(_ACTION_SPACE_SIZE, dtype=np.bool_)
         mask[_NOOP_ACTION] = True  # noop always valid
         for i in range(4):
             if card_names[i] != "":
-                # Card detected in this slot — unmask all grid placements
-                start = i * _GRID_CELLS
-                end = start + _GRID_CELLS
-                mask[start:end] = True
+                base = i * _GRID_CELLS
+                for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
+                    row_start = base + row * _GRID_COLS
+                    mask[row_start:row_start + _GRID_COLS] = True
 
         return {
             "obs": {
@@ -626,6 +628,11 @@ class PerceptionAdapter:
             except Exception:
                 continue
 
+            if self._config.verbose and not hasattr(self, "_card_logged"):
+                print(f"[Perception] Card {i}: crop=[{x_start}:{x_end}, "
+                      f"{y_start}:{y_end}] in {fw}x{fh} frame → "
+                      f"{class_name} ({confidence:.2f})")
+
             card_names[i] = class_name
 
             # Card present
@@ -640,6 +647,24 @@ class PerceptionAdapter:
             if self._card_elixir_cost is not None:
                 cost = self._card_elixir_cost.get(class_name, 0)
                 vector[0, 19 + i] = cost / self._max_elixir
+
+        if self._config.verbose and not hasattr(self, "_card_logged"):
+            self._card_logged = True
+            # Save diagnostic card crops on first frame
+            try:
+                log_dir = self._config.log_dir
+                os.makedirs(log_dir, exist_ok=True)
+                for i in range(4):
+                    xs = int((_CARD_START_X + i * _CARD_WIDTH) * x_scale)
+                    xe = int((_CARD_START_X + (i + 1) * _CARD_WIDTH) * x_scale)
+                    ys = int(_CARD_Y_START * y_scale)
+                    ye = int(_CARD_Y_END * y_scale)
+                    crop_i = frame[ys:ye, xs:xe]
+                    path = os.path.join(log_dir, f"card_crop_{i}.png")
+                    cv2.imwrite(path, crop_i)
+                print(f"[Perception] Saved card crops to {log_dir}/card_crop_*.png")
+            except Exception as e:
+                print(f"[Perception] Could not save card crops: {e}")
 
         return card_names
 
@@ -752,6 +777,17 @@ class ActionDispatcher:
             return result
 
         # Execute the two-click sequence
+        if self._config.verbose:
+            cx_n, cy_n = _card_slot_center_norm(card_id)
+            card_sx = int(cx_n * self._frame_w) + self._window_left
+            card_sy = int(cy_n * self._frame_h) + self._window_top
+            arena_sx = int(x_norm * self._frame_w) + self._window_left
+            arena_sy = int(y_norm * self._frame_h) + self._window_top
+            print(f"[Action] card={card_id} row={row} col={col} | "
+                  f"card_click=({card_sx},{card_sy}) "
+                  f"arena_click=({arena_sx},{arena_sy}) "
+                  f"[frame={self._frame_w}x{self._frame_h} "
+                  f"offset=({self._window_left},{self._window_top})]")
         self._click_card_then_arena(card_id, x_norm, y_norm)
         self._last_action_time = time.time()
         self._actions_this_minute += 1
