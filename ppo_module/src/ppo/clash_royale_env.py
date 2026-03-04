@@ -69,6 +69,12 @@ class EnvConfig:
     frame_w: int = 540
     frame_h: int = 960
 
+    # Game region within the captured window (left, top, width, height).
+    # Use when the game window is landscape (e.g. Google Play Games 1920x1080)
+    # and the Clash Royale portrait game area is a subset of the window.
+    # If None, auto-detected via _detect_game_bounds().
+    game_region: Optional[tuple[int, int, int, int]] = None
+
     # Perception
     use_perception: bool = True
     detector_model_paths: list[str] = field(default_factory=lambda: [
@@ -172,26 +178,29 @@ class ClashRoyaleEnv(gymnasium.Env):
         # Initialize components
         self._capture = GameCapture(self._live_config)
 
-        # Detect game bounds from probe frame.
-        # Wait for the game window to be in focus first, since mss captures
-        # screen pixels — if VS Code is covering the game, the probe will
-        # detect wrong bounds that persist for the entire session.
-        hwnd = self._capture.get_window_hwnd()
-        if hwnd is not None:
-            import ctypes
-            for _ in range(30):  # wait up to 15s for focus
-                try:
-                    if ctypes.windll.user32.GetForegroundWindow() == hwnd:
+        # Detect game bounds within the captured window.
+        if self._config.game_region is not None:
+            # Manual override: use exact game region coordinates
+            gx, gy, gw, gh = self._config.game_region
+        else:
+            # Auto-detect: wait for focus, then probe
+            hwnd = self._capture.get_window_hwnd()
+            if hwnd is not None:
+                import ctypes
+                for _ in range(30):  # wait up to 15s for focus
+                    try:
+                        if ctypes.windll.user32.GetForegroundWindow() == hwnd:
+                            break
+                    except Exception:
                         break
-                except Exception:
-                    break
-                time.sleep(0.5)
-            else:
-                print("[Env] WARNING: Game window not focused for probe. "
-                      "Bounds may be incorrect.")
+                    time.sleep(0.5)
+                else:
+                    print("[Env] WARNING: Game window not focused for probe. "
+                          "Bounds may be incorrect.")
 
-        probe = self._capture.capture()
-        gx, gy, gw, gh = self._detect_game_bounds(probe)
+            probe = self._capture.capture()
+            gx, gy, gw, gh = self._detect_game_bounds(probe)
+
         self._game_x_offset = gx
         self._game_y_offset = gy
         self._game_w = gw
@@ -253,7 +262,11 @@ class ClashRoyaleEnv(gymnasium.Env):
                 )
 
         if self._config.verbose:
-            print(f"[Env] Initialized. Game bounds: ({gx},{gy}) {gw}x{gh}")
+            aspect = gw / max(gh, 1)
+            orient = "portrait" if aspect < 0.7 else "LANDSCAPE — use --game-region"
+            src = "manual" if self._config.game_region else "auto-detected"
+            print(f"[Env] Initialized. Game bounds: ({gx},{gy}) {gw}x{gh} "
+                  f"(aspect={aspect:.2f}, {orient}, {src})")
             print(f"[Env] Perception: {self._perception.perception_active}")
             print(f"[Env] Dry run: {self._config.dry_run}")
             print(f"[Env] Frame stacking: {n} frames")
@@ -311,19 +324,67 @@ class ClashRoyaleEnv(gymnasium.Env):
     def _detect_game_bounds(
         frame: np.ndarray, threshold: int = 15,
     ) -> tuple[int, int, int, int]:
-        """Detect game content within frame (exclude black pillarbox bars)."""
+        """Detect game content within frame (exclude pillarbox bars).
+
+        Two-pass approach:
+        1. Strip pure-black bars (pixels < threshold)
+        2. If result is landscape (wider than portrait), find the portrait
+           game region by detecting the column band with highest variance.
+           This handles Google Play Games windows where the sidebar UI is
+           dark gray (not black) so pass 1 doesn't catch it.
+
+        Returns:
+            (x_offset, y_offset, width, height) of the game region.
+        """
         fh, fw = frame.shape[:2]
+
+        # Pass 1: strip black bars
         col_max = frame.max(axis=(0, 2))
         row_max = frame.max(axis=(1, 2))
         non_black_cols = np.where(col_max > threshold)[0]
         non_black_rows = np.where(row_max > threshold)[0]
         if len(non_black_cols) == 0 or len(non_black_rows) == 0:
             return 0, 0, fw, fh
-        x_start = int(non_black_cols[0])
-        x_end = int(non_black_cols[-1]) + 1
-        y_start = int(non_black_rows[0])
-        y_end = int(non_black_rows[-1]) + 1
-        return x_start, y_start, x_end - x_start, y_end - y_start
+        gx = int(non_black_cols[0])
+        gw = int(non_black_cols[-1]) + 1 - gx
+        gy = int(non_black_rows[0])
+        gh = int(non_black_rows[-1]) + 1 - gy
+
+        # Pass 2: if result is landscape, find portrait game region
+        # Portrait games are ~9:16 ratio (0.5625). If aspect > 0.7, the
+        # detected region includes non-game UI (e.g. GPG sidebar).
+        aspect = gw / max(gh, 1)
+        if aspect > 0.7:
+            # Per-column variance: game columns have varied content
+            # (troops, cards, effects), sidebar columns are uniform
+            region = frame[gy:gy + gh, gx:gx + gw]
+            gray = region.mean(axis=2)  # (H, W) grayscale
+            col_var = np.var(gray, axis=0)  # (W,) variance per column
+
+            # Find contiguous band of high-variance columns
+            var_thresh = np.percentile(col_var, 60)
+            high_var = col_var > var_thresh
+
+            # Longest contiguous run = game region
+            best_start, best_len = 0, 0
+            run_start, run_len = 0, 0
+            for i, v in enumerate(high_var):
+                if v:
+                    if run_len == 0:
+                        run_start = i
+                    run_len += 1
+                else:
+                    if run_len > best_len:
+                        best_start, best_len = run_start, run_len
+                    run_len = 0
+            if run_len > best_len:
+                best_start, best_len = run_start, run_len
+
+            if best_len > 100:  # minimum viable game width
+                gx = gx + best_start
+                gw = best_len
+
+        return gx, gy, gw, gh
 
     def _crop_game_region(self, frame: np.ndarray) -> np.ndarray:
         """Crop frame to game content region."""

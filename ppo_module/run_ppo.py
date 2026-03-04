@@ -106,6 +106,12 @@ def parse_args():
         help="Manual capture region: left,top,width,height",
     )
 
+    # Game region within captured window (for landscape windows like GPG)
+    parser.add_argument(
+        "--game-region", type=str, default="",
+        help="Game area within window: left,top,width,height (e.g. 655,1,609,1077)",
+    )
+
     # Training
     parser.add_argument(
         "--num-episodes", type=int, default=15,
@@ -223,6 +229,15 @@ def main():
             return 1
         capture_region = tuple(int(p.strip()) for p in parts)
 
+    # Parse game region within window
+    game_region = None
+    if args.game_region:
+        parts = args.game_region.split(",")
+        if len(parts) != 4:
+            print("Error: --game-region must be left,top,width,height")
+            return 1
+        game_region = tuple(int(p.strip()) for p in parts)
+
     # Build configs
     reward_config = RewardConfig(reward_scale=args.reward_scale)
 
@@ -238,6 +253,7 @@ def main():
         visualize=args.visualize,
         vis_save_dir=args.vis_save_dir,
         n_frames=args.n_frames,
+        game_region=game_region,
     )
 
     ppo_config = PPOConfig(
