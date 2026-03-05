@@ -109,9 +109,19 @@ This produces `best_bc.pt` (full policy) and `bc_feature_extractor.pt` (feature 
 Before live training, verify the full pipeline works without executing clicks.
 
 ```bash
+# If game window fills the screen (portrait mode):
 python ppo_module/run_ppo.py \
     --bc-weights models/bc/bc_feature_extractor.pt \
     --capture-region 0,0,540,960 \
+    --num-episodes 1 \
+    --n-frames 3 \
+    --dry-run
+
+# If game is inside a landscape window (e.g. Google Play Games at 1920x1080):
+python ppo_module/run_ppo.py \
+    --bc-weights models/bc/bc_feature_extractor.pt \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
     --num-episodes 1 \
     --n-frames 3 \
     --dry-run
@@ -134,9 +144,25 @@ python ppo_module/run_ppo.py \
 ### Command
 
 ```bash
+# Using window title (auto-detects game window):
 python ppo_module/run_ppo.py \
     --bc-weights models/bc/bc_feature_extractor.pt \
     --window-title "Clash Royale" \
+    --num-episodes 15 \
+    --freeze-extractor \
+    --n-frames 3 \
+    --lr 1e-4 \
+    --n-steps 700 \
+    --ent-start 0.02 \
+    --ent-end 0.005 \
+    --reward-scale 0.1 \
+    --templates-dir ppo_module/templates
+
+# Using manual capture + game region (Google Play Games at 1920x1080):
+python ppo_module/run_ppo.py \
+    --bc-weights models/bc/bc_feature_extractor.pt \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
     --num-episodes 15 \
     --freeze-extractor \
     --n-frames 3 \
@@ -178,6 +204,8 @@ python ppo_module/run_ppo.py \
 ### Expected Metrics
 
 - `cards_played > 0` (agent is making decisions, not always no-op)
+- `card_cost_avg > 2.0` (not always playing cheapest card)
+- `noop_ratio` 0.3-0.6 (balanced between playing and waiting)
 - `episode_length` 200-600 (reasonable game durations)
 - Increasing `episode_reward` trend over 15 games
 - `anomaly_count` should be 0 or very low
@@ -263,6 +291,8 @@ Stop training when:
 |--------|-----------|--------------|
 | `cr/win_rate` | Trending upward | Flat at 0% after 10+ games |
 | `cr/cards_played` | 10-25 per game | 0-3 (passive) or 40+ (spam) |
+| `cr/card_cost_avg` | > 2.0 (diverse card usage) | < 1.5 (always cheapest card) |
+| `cr/noop_ratio` | 0.3-0.6 (balanced play/wait) | < 0.1 (spam) or > 0.8 (passive) |
 | `cr/episode_reward` | Positive trend | Consistently < -30 (always losing) |
 | `cr/ent_coef` | Decreasing 0.02 -> 0.005 | Stuck (callback not firing) |
 | `cr/bc_kl` (if enabled) | < 5.0 | > 20 (policy diverged from BC) |
@@ -280,8 +310,8 @@ tensorboard --logdir logs/ppo/
 Per-episode metrics in `logs/ppo/training_log.jsonl`:
 
 ```json
-{"episode": 1, "outcome": "loss", "reward": -2.85, "cards_played": 12, "episode_length": 245, "win_rate": 0.0, "timestep": 700}
-{"episode": 2, "outcome": "win", "reward": 4.52, "cards_played": 18, "episode_length": 312, "win_rate": 0.5, "timestep": 1400}
+{"episode": 1, "outcome": "loss", "reward": -2.85, "cards_played": 12, "card_cost_avg": 3.2, "noop_ratio": 0.45, "episode_length": 245, "win_rate": 0.0, "avg_reward": -2.85, "timestep": 700, "anomaly_detected": false, "truncation_reason": ""}
+{"episode": 2, "outcome": "win", "reward": 4.52, "cards_played": 18, "card_cost_avg": 4.1, "noop_ratio": 0.38, "episode_length": 312, "win_rate": 0.5, "avg_reward": 0.84, "timestep": 1400, "anomaly_detected": false, "truncation_reason": ""}
 ```
 
 Note: rewards are scaled by `reward_scale=0.1`, so a win with survival looks like `+3.0` not `+30.0`.
@@ -354,6 +384,17 @@ All rewards are multiplied by `reward_scale` (default 0.1) before being passed t
 | Elixir waste (full) | Elixir >= 9.5/10 | -0.10 | **-0.01** | Sitting at near-max elixir |
 | Elixir waste (high) | Elixir >= 8.0/10 | -0.02 | **-0.002** | Mild penalty for high elixir |
 | Unit advantage | Ally - enemy unit count | +0.01/unit | **+0.001/unit** | Per-step from arena grid |
+| Elixir efficiency | Card cost of played card | +0.005/elixir | **+0.0005/elixir** | Each card play (e.g. 7-cost = +0.035) |
+| Defensive placement | Place near enemy units | +0.03 | **+0.003** | Card placed within ±3 cols of enemy center |
+| Low-elixir noop | Noop when elixir < 3 | +0.01 | **+0.001** | Agent waits with low elixir |
+
+### Action-Aware Reward Shaping
+
+The reward function receives the agent's action each step and uses it for three additional signals:
+
+- **Elixir efficiency:** Proportional to the elixir cost of the card played (`+0.005 * card_cost`). A 7-cost card earns +0.035 vs a 1-cost earning +0.005, counteracting the "always play cheapest card" bias.
+- **Defensive placement:** If the card is placed within ±3 columns of the average enemy unit position on the arena grid, a +0.03 bonus is awarded. This teaches reactive placement toward active threats.
+- **Low-elixir noop:** If the agent chooses noop when current elixir < 3 (normalized < 0.3), a +0.01 bonus is awarded. This directly teaches "waiting is correct when you can't afford meaningful cards."
 
 ### Graduated Elixir Penalty
 
@@ -446,6 +487,11 @@ Default: `0.02 -> 0.005` over `num_episodes`. Higher entropy early encourages ex
 | `elixir_high_penalty` | `-0.02` | Mild penalty at >= 8.0 elixir |
 | `elixir_high_threshold` | `0.8` | High elixir threshold |
 | `unit_advantage_weight` | `0.01` | Per-unit advantage reward |
+| `elixir_spent_bonus` | `0.005` | Per-elixir-cost bonus for card plays |
+| `defensive_placement_bonus` | `0.03` | Bonus for placing near enemy units |
+| `defensive_col_radius` | `3` | Column radius for defensive placement |
+| `low_elixir_noop_bonus` | `0.01` | Bonus for noop when elixir < threshold |
+| `low_elixir_noop_threshold` | `0.3` | Elixir threshold for noop bonus (3/10) |
 | `reward_clamp` | `15.0` | Non-terminal reward clamp |
 | `reward_scale` | `0.1` | Global reward scaling factor |
 | `tower_jump_threshold` | `0.15` | Anomaly detection threshold |
@@ -483,12 +529,13 @@ python ppo_module/run_ppo.py [OPTIONS]
 | `--resume` | path | `""` | Path to saved PPO model (`.zip`) to resume from |
 | `--device` | choice | `cpu` | `cpu` or `cuda` |
 
-### Capture Arguments (Mutually Exclusive)
+### Capture Arguments
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--window-title` | string | `""` | Game window title for auto-detection |
-| `--capture-region` | ints | `""` | Manual region: `LEFT,TOP,WIDTH,HEIGHT` |
+| `--window-title` | string | `""` | Game window title for auto-detection (mutually exclusive with `--capture-region`) |
+| `--capture-region` | ints | `""` | Manual capture region: `LEFT,TOP,WIDTH,HEIGHT` (mutually exclusive with `--window-title`) |
+| `--game-region` | ints | `""` | Game area within captured window: `LEFT,TOP,WIDTH,HEIGHT` (for landscape windows like Google Play Games where the game is a portrait sub-region) |
 
 ### Training Hyperparameters
 
@@ -560,11 +607,11 @@ python ppo_module/run_ppo.py [OPTIONS]
 ============================================================
 
 --- Episode 1/15 ---
-[Episode 1] LOSS | reward=-2.8 | cards=12 | steps=245 | win_rate=0% (last 1)
+[Episode 1] LOSS | reward=-2.8 | cards=12 avg_cost=3.2 | noop=45% | steps=245 | win_rate=0% (last 1)
 [PPOTrainer] Saved checkpoint: models/ppo/ppo_ep1.zip
 
 --- Episode 2/15 ---
-[Episode 2] WIN | reward=+4.5 | cards=18 | steps=312 | win_rate=50% (last 2)
+[Episode 2] WIN | reward=+4.5 | cards=18 avg_cost=4.1 | noop=38% | steps=312 | win_rate=50% (last 2)
 ...
 ```
 
@@ -576,6 +623,10 @@ python ppo_module/run_ppo.py [OPTIONS]
 | `cr/episode_reward` | Total (scaled) reward per episode | Wins ~+3.0, losses ~-3.0 |
 | `cr/avg_reward` | Rolling average reward | Trending upward |
 | `cr/cards_played` | Card actions per episode | 10-25 |
+| `cr/card_cost_avg` | Average elixir cost of cards played this episode | > 2.0 (not always cheapest) |
+| `cr/avg_card_cost` | Rolling average card cost | 2.5-5.0 |
+| `cr/noop_ratio` | Fraction of steps that were noop this episode | 0.3-0.6 |
+| `cr/avg_noop_ratio` | Rolling average noop ratio | 0.3-0.6 |
 | `cr/episode_length` | Steps per episode | 200-600 |
 | `cr/ent_coef` | Current entropy coefficient | Decreasing 0.02 -> 0.005 |
 | `cr/bc_kl` | KL divergence from BC (if enabled) | < 5.0 |
@@ -645,6 +696,22 @@ Game phase detector is missing end screens. Fixes:
 - Ensure capture region matches the actual game area
 - Check game window position hasn't shifted
 
+### Training Reset Unexpectedly (Lost Progress)
+
+Using `--bc-weights` **starts fresh** from BC weights — all PPO policy heads, value heads, and optimizer state are re-initialized. To continue from a previous training run:
+
+```bash
+# WRONG: resets all PPO training
+python ppo_module/run_ppo.py --bc-weights models/bc/bc_feature_extractor.pt ...
+
+# CORRECT: continues from saved PPO checkpoint
+python ppo_module/run_ppo.py --resume models/ppo/latest_ppo.zip ...
+```
+
+`--bc-weights` and `--resume` are separate flags:
+- `--bc-weights`: Initialize new PPO model with BC feature extractor (Phase 1 start)
+- `--resume`: Load full PPO checkpoint including policy, value function, and optimizer state (continue training)
+
 ### CUDA Out of Memory
 
 ```bash
@@ -701,7 +768,8 @@ while True:
 # Step 0: Dry run to verify setup
 python ppo_module/run_ppo.py \
     --bc-weights models/bc/bc_feature_extractor.pt \
-    --window-title "Clash Royale" \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
     --num-episodes 1 \
     --n-frames 3 \
     --dry-run
@@ -709,7 +777,8 @@ python ppo_module/run_ppo.py \
 # Step 1: Phase 1 - frozen extractor (15 games)
 python ppo_module/run_ppo.py \
     --bc-weights models/bc/bc_feature_extractor.pt \
-    --window-title "Clash Royale" \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
     --num-episodes 15 \
     --freeze-extractor \
     --n-frames 3 \
@@ -720,10 +789,11 @@ python ppo_module/run_ppo.py \
     --reward-scale 0.1 \
     --templates-dir ppo_module/templates
 
-# Step 2: Phase 2 - full fine-tuning (25 games)
+# Step 2: Phase 2 - full fine-tuning (25 games, resume from Phase 1)
 python ppo_module/run_ppo.py \
     --resume models/ppo/latest_ppo.zip \
-    --window-title "Clash Royale" \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
     --num-episodes 25 \
     --lr 3e-5 \
     --n-frames 3 \
@@ -735,3 +805,5 @@ python ppo_module/run_ppo.py \
 # Step 3: Monitor with TensorBoard
 tensorboard --logdir logs/ppo/
 ```
+
+> **Note:** Steps 0-1 use `--bc-weights` to initialize from BC. Step 2 uses `--resume` to continue from the Phase 1 checkpoint. Using `--bc-weights` again in Step 2 would **reset** all Phase 1 training.
