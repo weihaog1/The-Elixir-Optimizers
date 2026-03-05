@@ -126,6 +126,19 @@ _CARD_Y_END = 920
 _BASE_W = 540
 _BASE_H = 960
 
+# Elixir bar region (fraction of frame dimensions, 540x960 base)
+# The purple fill bar sits at y=750-770, between arena and card bar.
+_ELIXIR_BAR_Y_START_FRAC = 752.0 / 960.0
+_ELIXIR_BAR_Y_END_FRAC = 768.0 / 960.0
+_ELIXIR_BAR_X_START_FRAC = 110.0 / 540.0  # after elixir icon/number
+_ELIXIR_BAR_X_END_FRAC = 520.0 / 540.0    # right edge of bar
+
+# HSV thresholds for purple/pink elixir bar color (OpenCV H: 0-180)
+_ELIXIR_HUE_LOW = 130
+_ELIXIR_HUE_HIGH = 175
+_ELIXIR_SAT_LOW = 30
+_ELIXIR_VAL_LOW = 60
+
 
 def _action_to_placement(action_idx: int):
     """Decode Discrete(2305) action. Returns (card_id, col, row) or None."""
@@ -433,6 +446,7 @@ class PerceptionAdapter:
             "mask": torch.from_numpy(mask).bool().unsqueeze(0),
             "detections": [],
             "perception_active": False,
+            "elixir": 5,
         }
 
     # Map YOLO tower class names to vector HP slot indices.
@@ -539,7 +553,9 @@ class PerceptionAdapter:
 
         # Vector features
         vector = np.zeros((1, _NUM_VECTOR_FEATURES), dtype=np.float32)
-        vector[0, 0] = 0.5    # elixir / 10 (no OCR, assume mid-game)
+        # Read elixir from the purple bar fill level (fast pixel check)
+        current_elixir = self._read_elixir_from_bar(frame)
+        vector[0, 0] = current_elixir / self._max_elixir
         vector[0, 1] = 0.4    # time_remaining / 300
 
         # Tower HP: only set 1.0 for towers actually detected by YOLO
@@ -566,17 +582,25 @@ class PerceptionAdapter:
             vector[0, 11:15] = 1.0  # assume all 4 cards present
             card_names = ["unknown"] * 4  # unmask all card slots
 
-        # Build action mask: only player's half of the arena (rows 17-31).
-        # In Clash Royale, you can only deploy units on your side.
+        # Build action mask: only player's half of the arena (rows 17-31),
+        # and only for cards the agent can actually afford.
         _DEPLOY_ROW_START = 17  # PLAYER_HALF_ROW_START from encoder_constants
         mask = np.zeros(_ACTION_SPACE_SIZE, dtype=np.bool_)
         mask[_NOOP_ACTION] = True  # noop always valid
         for i in range(4):
-            if card_names[i] != "":
-                base = i * _GRID_CELLS
-                for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
-                    row_start = base + row * _GRID_COLS
-                    mask[row_start:row_start + _GRID_COLS] = True
+            card_name = card_names[i]
+            if card_name == "":
+                continue
+            # Check elixir cost — skip cards we can't afford
+            cost = 0
+            if self._card_elixir_cost is not None:
+                cost = self._card_elixir_cost.get(card_name, 0)
+            if current_elixir < cost:
+                continue
+            base = i * _GRID_CELLS
+            for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
+                row_start = base + row * _GRID_COLS
+                mask[row_start:row_start + _GRID_COLS] = True
 
         return {
             "obs": {
@@ -588,6 +612,7 @@ class PerceptionAdapter:
             "perception_active": True,
             "enemy_count": enemy_count,
             "card_names": card_names,
+            "elixir": current_elixir,
         }
 
     def _populate_card_vector(
@@ -667,6 +692,77 @@ class PerceptionAdapter:
                 print(f"[Perception] Could not save card crops: {e}")
 
         return card_names
+
+    def _read_elixir_from_bar(self, frame: np.ndarray) -> int:
+        """Read current elixir from the horizontal purple bar fill level.
+
+        The Clash Royale elixir bar is a purple/pink horizontal bar at
+        y=750-770 (540x960 base). This method measures how far it extends
+        from left to right and maps that to an integer 0-10.
+
+        Args:
+            frame: BGR numpy array of the game frame.
+
+        Returns:
+            Integer elixir value in [0, 10].
+        """
+        fh, fw = frame.shape[:2]
+
+        # Crop the elixir bar region
+        y1 = int(_ELIXIR_BAR_Y_START_FRAC * fh)
+        y2 = int(_ELIXIR_BAR_Y_END_FRAC * fh)
+        x1 = int(_ELIXIR_BAR_X_START_FRAC * fw)
+        x2 = int(_ELIXIR_BAR_X_END_FRAC * fw)
+
+        # Bounds check
+        y1 = max(0, min(y1, fh - 1))
+        y2 = max(y1 + 1, min(y2, fh))
+        x1 = max(0, min(x1, fw - 1))
+        x2 = max(x1 + 1, min(x2, fw))
+
+        crop = frame[y1:y2, x1:x2]
+        if crop.size == 0:
+            return 5  # fallback mid-game assumption
+
+        # Convert to HSV and threshold for purple/pink
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        purple_mask = (
+            (hsv[:, :, 0] >= _ELIXIR_HUE_LOW)
+            & (hsv[:, :, 0] <= _ELIXIR_HUE_HIGH)
+            & (hsv[:, :, 1] >= _ELIXIR_SAT_LOW)
+            & (hsv[:, :, 2] >= _ELIXIR_VAL_LOW)
+        )
+
+        # Find rightmost purple column to measure fill level
+        col_has_purple = purple_mask.any(axis=0)  # shape (width,)
+        purple_cols = np.where(col_has_purple)[0]
+        if len(purple_cols) == 0:
+            return 0
+
+        fill_ratio = (purple_cols[-1] + 1) / len(col_has_purple)
+        current_elixir = max(0, min(10, int(fill_ratio * 10 + 0.3)))
+
+        # One-shot diagnostic save for HSV calibration
+        if self._config.verbose and not hasattr(self, "_elixir_logged"):
+            self._elixir_logged = True
+            try:
+                log_dir = self._config.log_dir
+                os.makedirs(log_dir, exist_ok=True)
+                cv2.imwrite(
+                    os.path.join(log_dir, "elixir_bar_crop.png"), crop
+                )
+                mask_img = purple_mask.astype(np.uint8) * 255
+                cv2.imwrite(
+                    os.path.join(log_dir, "elixir_bar_mask.png"), mask_img
+                )
+                print(
+                    f"[Perception] Elixir bar: {current_elixir}/10 "
+                    f"(fill={fill_ratio:.2f}, crop={crop.shape})"
+                )
+            except Exception:
+                pass
+
+        return current_elixir
 
 
 # ---------------------------------------------------------------------------
