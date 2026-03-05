@@ -815,6 +815,10 @@ class ActionDispatcher:
     def _is_game_focused(self) -> bool:
         """Check if the game window is the current foreground window."""
         if sys.platform != "win32" or self._game_hwnd is None:
+            if self._config.verbose and not hasattr(self, "_focus_warn_logged"):
+                self._focus_warn_logged = True
+                print("[Action] WARNING: Cannot verify window focus "
+                      "(no HWND). Clicks may land outside game.")
             return True  # assume yes on non-Windows or unknown HWND
         try:
             import ctypes
@@ -915,9 +919,13 @@ class ActionDispatcher:
         arena_px = int(x_norm * self._frame_w) + self._window_left
         arena_py = int(y_norm * self._frame_h) + self._window_top
 
-        # Click card slot, wait, click arena
+        # Click card slot, wait, re-check focus, click arena
         self._pyautogui.click(card_px, card_py)
         time.sleep(0.15)  # CLICK_DELAY_SECONDS
+        if not self._is_game_focused():
+            if self._config.verbose:
+                print("[Action] Focus lost between clicks — aborting arena click")
+            return
         self._pyautogui.click(arena_px, arena_py)
 
 

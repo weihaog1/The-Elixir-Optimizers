@@ -6,15 +6,20 @@ Computes per-step rewards from observation vector deltas. Signals used:
 - Survival bonus (small positive reward per step)
 - Graduated elixir waste penalty (mild at 8+, full at 9.5+)
 - Unit count advantage (ally vs enemy troop presence)
+- Elixir efficiency bonus (reward proportional to card cost played)
+- Defensive placement bonus (reward for placing near enemy concentrations)
+- Low-elixir noop bonus (reward for waiting when elixir is scarce)
 
-All signals come from the observation tensors (vector + arena).
+All signals come from the observation tensors (vector + arena) and the
+action taken.
 
 Vector indices used:
     0: elixir / 10
     9: player tower count / 3
    10: enemy tower count / 3
+   19-22: card elixir costs / 10
 
-Arena channels used for unit advantage:
+Arena channels used for unit advantage and placement rewards:
     1: CH_BELONGING  (-1=ally, +1=enemy)
     2: CH_ARENA_MASK (1.0=unit present)
 """
@@ -40,6 +45,11 @@ class RewardConfig:
     elixir_high_penalty: float = -0.02  # mild penalty at 8+ elixir
     elixir_high_threshold: float = 0.8  # 8/10 elixir
     unit_advantage_weight: float = 0.01  # per-unit advantage reward
+    elixir_spent_bonus: float = 0.005  # per elixir cost of card played
+    defensive_placement_bonus: float = 0.03  # for placing near enemy concentration
+    defensive_col_radius: int = 3  # columns within enemy center to earn bonus
+    low_elixir_noop_bonus: float = 0.01  # for choosing noop when elixir < threshold
+    low_elixir_noop_threshold: float = 0.3  # 3/10 elixir
     reward_clamp: float = 15.0  # Per-step non-terminal reward ceiling
     reward_scale: float = 0.1  # Scale all rewards for value fn stability
     tower_jump_threshold: float = 0.15  # Tower increase > this = new game anomaly
@@ -59,6 +69,12 @@ class RewardComputer:
     _ELIXIR_IDX = 0
     _ALLY_TOWER_COUNT_IDX = 9
     _ENEMY_TOWER_COUNT_IDX = 10
+    _CARD_COST_START_IDX = 19  # vector[19:23] = card elixir costs / 10
+
+    # Action space layout
+    _GRID_CELLS = 576  # 32 rows * 18 cols
+    _GRID_COLS = 18
+    _NOOP_ACTION = 2304
 
     def __init__(self, config: Optional[RewardConfig] = None) -> None:
         self.config = config or RewardConfig()
@@ -94,6 +110,7 @@ class RewardComputer:
         prev_obs: dict[str, np.ndarray],
         curr_obs: dict[str, np.ndarray],
         terminal_outcome: Optional[str] = None,
+        action: Optional[int] = None,
     ) -> float:
         """Compute reward for a single step.
 
@@ -101,6 +118,7 @@ class RewardComputer:
             prev_obs: Previous observation dict with "vector" key.
             curr_obs: Current observation dict with "vector" key.
             terminal_outcome: "win", "loss", or "draw" on last step, else None.
+            action: Action index taken this step (0-2304), or None.
 
         Returns:
             Scalar reward for this step.
@@ -161,6 +179,8 @@ class RewardComputer:
             reward += cfg.elixir_high_penalty  # mild penalty at 8.0+
 
         # --- Unit count advantage (from arena grid) ---
+        arena = None
+        enemy_cols: list[int] = []
         if "arena" in curr_obs:
             arena = curr_obs["arena"]
             if arena.ndim == 4:
@@ -172,6 +192,40 @@ class RewardComputer:
             enemy_units = int(np.sum(occupied & (belonging > 0)))
             advantage = ally_units - enemy_units
             reward += cfg.unit_advantage_weight * advantage
+
+            # Collect enemy unit column positions for placement reward
+            enemy_occupied = occupied & (belonging > 0)
+            enemy_rows, enemy_col_arr = np.where(enemy_occupied)
+            enemy_cols = enemy_col_arr.tolist()
+
+        # --- Action-aware reward shaping ---
+        if action is not None:
+            is_noop = (action == self._NOOP_ACTION)
+
+            if is_noop:
+                # Low-elixir noop bonus: reward waiting when elixir is scarce
+                if curr_elixir < cfg.low_elixir_noop_threshold:
+                    reward += cfg.low_elixir_noop_bonus
+            else:
+                # Decode action: card_id and placement column
+                card_id = action // self._GRID_CELLS
+                cell = action % self._GRID_CELLS
+                placement_col = cell % self._GRID_COLS
+
+                # Elixir efficiency: reward proportional to card cost
+                if 0 <= card_id < 4:
+                    card_cost_norm = float(
+                        curr_vec[self._CARD_COST_START_IDX + card_id]
+                    )
+                    card_cost = card_cost_norm * 10.0  # denormalize
+                    reward += cfg.elixir_spent_bonus * card_cost
+
+                # Defensive placement: bonus for placing near enemy units
+                if enemy_cols:
+                    avg_enemy_col = sum(enemy_cols) / len(enemy_cols)
+                    col_dist = abs(placement_col - avg_enemy_col)
+                    if col_dist <= cfg.defensive_col_radius:
+                        reward += cfg.defensive_placement_bonus
 
         # --- Clamp non-terminal reward ---
         reward = max(-cfg.reward_clamp, min(cfg.reward_clamp, reward))

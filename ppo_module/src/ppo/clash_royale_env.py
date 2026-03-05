@@ -247,6 +247,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._step_count = 0
         self._episode_reward = 0.0
         self._cards_played = 0
+        self._card_costs_played: list[float] = []  # elixir costs for metrics
+        self._noop_count = 0
         self._identical_frame_count = 0
         self._prev_frame_hash: Optional[int] = None
 
@@ -495,6 +497,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._step_count = 0
         self._episode_reward = 0.0
         self._cards_played = 0
+        self._card_costs_played = []
+        self._noop_count = 0
         self._identical_frame_count = 0
         self._prev_frame_hash = None
 
@@ -676,6 +680,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             exec_result = self._dispatcher.execute(action, logit_score=0.0)
             if action != _NOOP_ACTION and exec_result.get("executed", False):
                 self._cards_played += 1
+            if action == _NOOP_ACTION:
+                self._noop_count += 1
 
         # 5. Run perception (produces single-frame obs)
         perception_result = self._perception.process_frame(frame)
@@ -716,7 +722,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         reward = 0.0
         if self._raw_prev_obs is not None:
             reward = self._reward_computer.compute(
-                self._raw_prev_obs, curr_raw_obs, terminal_outcome=outcome,
+                self._raw_prev_obs, curr_raw_obs,
+                terminal_outcome=outcome, action=action,
             )
         # Add manual crown reward (non-zero only when operator manually stopped)
         reward += manual_crown_reward
@@ -734,6 +741,23 @@ class ClashRoyaleEnv(gymnasium.Env):
             if self._config.verbose:
                 print("[Env] Anomaly: tower counts jumped up — new game detected. Ending episode.")
 
+        # Track card cost from observation vector (card costs at indices 19-22)
+        if action != _NOOP_ACTION and exec_result.get("executed", False):
+            card_id = action // 576  # GRID_CELLS
+            if 0 <= card_id < 4:
+                raw_vec = curr_raw_obs["vector"]
+                if raw_vec.ndim == 2:
+                    raw_vec = raw_vec[0]
+                card_cost = float(raw_vec[19 + card_id]) * 10.0  # denormalize
+                self._card_costs_played.append(card_cost)
+
+        # Compute episode-level metrics
+        noop_ratio = self._noop_count / max(self._step_count, 1)
+        card_cost_avg = (
+            sum(self._card_costs_played) / len(self._card_costs_played)
+            if self._card_costs_played else 0.0
+        )
+
         # 7. Build info dict
         info = {
             "step": self._step_count,
@@ -744,6 +768,8 @@ class ClashRoyaleEnv(gymnasium.Env):
             "perception_active": perception_result.get("perception_active", False),
             "episode_reward": self._episode_reward,
             "cards_played": self._cards_played,
+            "card_cost_avg": round(card_cost_avg, 2),
+            "noop_ratio": round(noop_ratio, 3),
             "anomaly_detected": anomaly_detected,
             "truncation_reason": truncation_reason,
         }

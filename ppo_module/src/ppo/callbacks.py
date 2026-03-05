@@ -47,6 +47,8 @@ class CRMetricsCallback(BaseCallback):
         self._rewards: deque[float] = deque(maxlen=window_size)
         self._cards_played: deque[int] = deque(maxlen=window_size)
         self._episode_lengths: deque[int] = deque(maxlen=window_size)
+        self._card_cost_avgs: deque[float] = deque(maxlen=window_size)
+        self._noop_ratios: deque[float] = deque(maxlen=window_size)
 
         self._total_episodes = 0
         self._anomaly_count = 0
@@ -79,11 +81,15 @@ class CRMetricsCallback(BaseCallback):
         ep_reward = info.get("episode_reward", 0.0)
         cards = info.get("cards_played", 0)
         ep_length = info.get("episode_length", 0)
+        card_cost_avg = info.get("card_cost_avg", 0.0)
+        noop_ratio = info.get("noop_ratio", 0.0)
 
         self._outcomes.append(outcome)
         self._rewards.append(ep_reward)
         self._cards_played.append(cards)
         self._episode_lengths.append(ep_length)
+        self._card_cost_avgs.append(card_cost_avg)
+        self._noop_ratios.append(noop_ratio)
 
         # Compute rolling metrics
         n = len(self._outcomes)
@@ -92,6 +98,8 @@ class CRMetricsCallback(BaseCallback):
         avg_reward = sum(self._rewards) / n if n > 0 else 0.0
         avg_cards = sum(self._cards_played) / n if n > 0 else 0.0
         avg_length = sum(self._episode_lengths) / n if n > 0 else 0.0
+        avg_cost = sum(self._card_cost_avgs) / n if n > 0 else 0.0
+        avg_noop = sum(self._noop_ratios) / n if n > 0 else 0.0
 
         # Log to TensorBoard
         if self.logger is not None:
@@ -102,6 +110,10 @@ class CRMetricsCallback(BaseCallback):
             self.logger.record("cr/avg_cards_played", avg_cards)
             self.logger.record("cr/episode_length", ep_length)
             self.logger.record("cr/avg_episode_length", avg_length)
+            self.logger.record("cr/card_cost_avg", card_cost_avg)
+            self.logger.record("cr/avg_card_cost", avg_cost)
+            self.logger.record("cr/noop_ratio", noop_ratio)
+            self.logger.record("cr/avg_noop_ratio", avg_noop)
             self.logger.record("cr/total_episodes", self._total_episodes)
             self.logger.record("cr/anomaly_count", self._anomaly_count)
             self.logger.record("cr/truncation_count", self._truncation_count)
@@ -115,6 +127,8 @@ class CRMetricsCallback(BaseCallback):
             "outcome": outcome,
             "reward": round(ep_reward, 3),
             "cards_played": cards,
+            "card_cost_avg": round(card_cost_avg, 2),
+            "noop_ratio": round(noop_ratio, 3),
             "episode_length": ep_length,
             "win_rate": round(win_rate, 3),
             "avg_reward": round(avg_reward, 3),
@@ -133,7 +147,8 @@ class CRMetricsCallback(BaseCallback):
                 f"[Episode {self._total_episodes}] "
                 f"{result_str} | "
                 f"reward={ep_reward:+.1f} | "
-                f"cards={cards} | "
+                f"cards={cards} avg_cost={card_cost_avg:.1f} | "
+                f"noop={noop_ratio:.0%} | "
                 f"steps={ep_length} | "
                 f"win_rate={win_rate:.0%} (last {n})"
             )
