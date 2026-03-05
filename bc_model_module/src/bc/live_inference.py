@@ -803,9 +803,22 @@ class PerceptionAdapter:
                 cv2.imwrite(
                     os.path.join(log_dir, "elixir_bar_mask.png"), mask_img
                 )
+                # Save full frame with elixir bar region highlighted
+                debug_frame = frame.copy()
+                cv2.rectangle(debug_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(
+                    debug_frame, f"elixir={current_elixir}",
+                    (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5, (0, 255, 0), 1,
+                )
+                cv2.imwrite(
+                    os.path.join(log_dir, "frame_elixir_debug.png"),
+                    debug_frame,
+                )
                 print(
                     f"[Perception] Elixir bar: {current_elixir}/10 "
-                    f"(fill={fill_ratio:.2f}, crop={crop.shape})"
+                    f"(fill={fill_ratio:.2f}, crop={crop.shape}, "
+                    f"region=({x1},{y1})-({x2},{y2}) in {fw}x{fh})"
                 )
             except Exception:
                 pass
