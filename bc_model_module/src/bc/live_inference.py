@@ -127,17 +127,19 @@ _BASE_W = 540
 _BASE_H = 960
 
 # Elixir bar region (fraction of frame dimensions, 540x960 base)
-# The purple fill bar sits at y=750-770, between arena and card bar.
-_ELIXIR_BAR_Y_START_FRAC = 752.0 / 960.0
-_ELIXIR_BAR_Y_END_FRAC = 768.0 / 960.0
+# The pink/purple fill bar sits at y=750-770, between arena and card bar.
+_ELIXIR_BAR_Y_START_FRAC = 750.0 / 960.0
+_ELIXIR_BAR_Y_END_FRAC = 770.0 / 960.0
 _ELIXIR_BAR_X_START_FRAC = 110.0 / 540.0  # after elixir icon/number
 _ELIXIR_BAR_X_END_FRAC = 520.0 / 540.0    # right edge of bar
 
-# HSV thresholds for purple/pink elixir bar color (OpenCV H: 0-180)
-_ELIXIR_HUE_LOW = 130
-_ELIXIR_HUE_HIGH = 175
-_ELIXIR_SAT_LOW = 30
-_ELIXIR_VAL_LOW = 60
+# Elixir bar detection thresholds (HSV saturation + value only).
+# The bar is the only bright, saturated element in this narrow strip —
+# filled pixels are pink/purple (high S, high V), empty pixels are dark.
+# No hue constraint needed, which avoids issues with pink wrapping
+# around the 0/180 hue boundary in OpenCV.
+_ELIXIR_SAT_LOW = 50
+_ELIXIR_VAL_LOW = 80
 
 
 def _action_to_placement(action_idx: int):
@@ -694,11 +696,16 @@ class PerceptionAdapter:
         return card_names
 
     def _read_elixir_from_bar(self, frame: np.ndarray) -> int:
-        """Read current elixir from the horizontal purple bar fill level.
+        """Read current elixir from the horizontal bar fill level.
 
-        The Clash Royale elixir bar is a purple/pink horizontal bar at
+        The Clash Royale elixir bar is a pink/purple horizontal bar at
         y=750-770 (540x960 base). This method measures how far it extends
         from left to right and maps that to an integer 0-10.
+
+        Detection uses saturation + brightness only (no hue constraint)
+        because the bar's pink color wraps around the 0/180 hue boundary
+        in OpenCV HSV. In this narrow strip, the only bright/saturated
+        pixels are the elixir fill — empty pixels are dark.
 
         Args:
             frame: BGR numpy array of the game frame.
@@ -724,25 +731,25 @@ class PerceptionAdapter:
         if crop.size == 0:
             return 5  # fallback mid-game assumption
 
-        # Convert to HSV and threshold for purple/pink
+        # Detect filled bar pixels via saturation + brightness.
+        # The pink/purple bar is the only bright, saturated element in
+        # this narrow strip. Empty bar pixels are near-black.
         hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        purple_mask = (
-            (hsv[:, :, 0] >= _ELIXIR_HUE_LOW)
-            & (hsv[:, :, 0] <= _ELIXIR_HUE_HIGH)
-            & (hsv[:, :, 1] >= _ELIXIR_SAT_LOW)
+        bar_mask = (
+            (hsv[:, :, 1] >= _ELIXIR_SAT_LOW)
             & (hsv[:, :, 2] >= _ELIXIR_VAL_LOW)
         )
 
-        # Find rightmost purple column to measure fill level
-        col_has_purple = purple_mask.any(axis=0)  # shape (width,)
-        purple_cols = np.where(col_has_purple)[0]
-        if len(purple_cols) == 0:
+        # Find rightmost filled column to measure fill level
+        col_has_fill = bar_mask.any(axis=0)  # shape (width,)
+        fill_cols = np.where(col_has_fill)[0]
+        if len(fill_cols) == 0:
             return 0
 
-        fill_ratio = (purple_cols[-1] + 1) / len(col_has_purple)
+        fill_ratio = (fill_cols[-1] + 1) / len(col_has_fill)
         current_elixir = max(0, min(10, int(fill_ratio * 10 + 0.3)))
 
-        # One-shot diagnostic save for HSV calibration
+        # One-shot diagnostic save for calibration
         if self._config.verbose and not hasattr(self, "_elixir_logged"):
             self._elixir_logged = True
             try:
@@ -751,7 +758,7 @@ class PerceptionAdapter:
                 cv2.imwrite(
                     os.path.join(log_dir, "elixir_bar_crop.png"), crop
                 )
-                mask_img = purple_mask.astype(np.uint8) * 255
+                mask_img = bar_mask.astype(np.uint8) * 255
                 cv2.imwrite(
                     os.path.join(log_dir, "elixir_bar_mask.png"), mask_img
                 )
