@@ -594,11 +594,12 @@ class PerceptionAdapter:
             card_name = card_names[i]
             if card_name == "":
                 continue
-            # Check elixir cost — skip cards we can't afford
+            # Check elixir cost — skip cards we can't afford.
+            # +1 buffer accounts for elixir read noise and 500ms mask staleness.
             cost = 0
             if self._card_elixir_cost is not None:
                 cost = self._card_elixir_cost.get(card_name, 0)
-            if current_elixir < cost:
+            if current_elixir < cost + 1:
                 continue
             base = i * _GRID_CELLS
             for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
@@ -756,7 +757,7 @@ class PerceptionAdapter:
             return 0
 
         fill_ratio = (fill_cols[-1] + 1) / len(col_has_fill)
-        current_elixir = max(0, min(10, int(fill_ratio * 10 + 0.3)))
+        current_elixir = max(0, min(10, int(fill_ratio * 10)))
 
         # One-shot diagnostic save for calibration
         if self._config.verbose and not hasattr(self, "_elixir_logged"):

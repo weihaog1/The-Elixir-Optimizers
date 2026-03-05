@@ -46,6 +46,7 @@ from src.bc.live_inference import (
     PerceptionAdapter,
     _NOOP_ACTION,
 )
+from src.encoder.encoder_constants import CARD_ELIXIR_COST
 from src.ppo.game_detector import DetectorConfig, GamePhaseDetector, Phase
 from src.ppo.reward import RewardComputer, RewardConfig
 
@@ -251,6 +252,8 @@ class ClashRoyaleEnv(gymnasium.Env):
         self._cards_played = 0
         self._card_costs_played: list[float] = []  # elixir costs for metrics
         self._noop_count = 0
+        self._last_card_names: list[str] = ["", "", "", ""]  # from previous perception
+        self._last_elixir: int = 5  # from previous perception
         self._identical_frame_count = 0
         self._prev_frame_hash: Optional[int] = None
 
@@ -554,8 +557,10 @@ class ClashRoyaleEnv(gymnasium.Env):
 
         stacked_obs = self._stack_obs()
 
-        # Log initial perception state
+        # Store card names and elixir for action logging
         card_names = perception_result.get("card_names", [])
+        self._last_card_names = card_names if len(card_names) == 4 else ["", "", "", ""]
+        self._last_elixir = perception_result.get("elixir", 5)
         valid_card_actions = int(self._current_mask[:_ACTION_SPACE_SIZE - 1].sum())
         info = {
             "perception_active": perception_result.get("perception_active", False),
@@ -678,16 +683,52 @@ class ClashRoyaleEnv(gymnasium.Env):
         #    Also suppress if END_SCREEN is the raw candidate (debounce not yet
         #    confirmed) — prevents clicking "Play Again" during the 3-frame window
         candidate_end = self._game_detector.candidate_phase == Phase.END_SCREEN
+        action_card_name = ""
+        action_card_id = -1
+        action_row = -1
+        action_col = -1
         if not terminated and not candidate_end:
             exec_result = self._dispatcher.execute(action, logit_score=0.0)
             if action != _NOOP_ACTION and exec_result.get("executed", False):
                 self._cards_played += 1
-            if action == _NOOP_ACTION:
+                # Decode action for logging
+                action_card_id = action // 576
+                cell = action % 576
+                action_row = cell // 18
+                action_col = cell % 18
+                if 0 <= action_card_id < len(self._last_card_names):
+                    action_card_name = self._last_card_names[action_card_id]
+                cost = 0
+                if action_card_name:
+                    cost = CARD_ELIXIR_COST.get(action_card_name, 0)
+                if self._config.verbose:
+                    print(f"[Env] Step {self._step_count}: Played "
+                          f"{action_card_name or '?'} (slot {action_card_id}, "
+                          f"cost {cost}) at row={action_row} col={action_col} "
+                          f"| elixir={self._last_elixir}")
+            elif action == _NOOP_ACTION:
                 self._noop_count += 1
+                if self._config.verbose and self._step_count % 50 == 0:
+                    print(f"[Env] Step {self._step_count}: NOOP "
+                          f"| elixir={self._last_elixir}")
+            elif action != _NOOP_ACTION:
+                # Card action attempted but not executed
+                action_card_id = action // 576
+                if 0 <= action_card_id < len(self._last_card_names):
+                    action_card_name = self._last_card_names[action_card_id]
+                if self._config.verbose:
+                    print(f"[Env] Step {self._step_count}: {action_card_name or '?'} "
+                          f"NOT executed ({exec_result.get('reason', '?')}) "
+                          f"| elixir={self._last_elixir}")
 
         # 5. Run perception (produces single-frame obs)
         perception_result = self._perception.process_frame(frame)
         curr_raw_obs = self._obs_to_numpy(perception_result["obs"])
+
+        # Update card names and elixir for next step's action logging
+        new_card_names = perception_result.get("card_names", [])
+        self._last_card_names = new_card_names if len(new_card_names) == 4 else self._last_card_names
+        self._last_elixir = perception_result.get("elixir", self._last_elixir)
 
         # Update action mask
         mask = perception_result["mask"]
@@ -766,6 +807,11 @@ class ClashRoyaleEnv(gymnasium.Env):
             "action": action,
             "action_executed": exec_result.get("executed", False),
             "action_reason": exec_result.get("reason", ""),
+            "action_card_name": action_card_name,
+            "action_card_id": action_card_id,
+            "action_row": action_row,
+            "action_col": action_col,
+            "elixir": self._last_elixir,
             "phase": phase.value,
             "perception_active": perception_result.get("perception_active", False),
             "episode_reward": self._episode_reward,

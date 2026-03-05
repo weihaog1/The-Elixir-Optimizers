@@ -13,13 +13,14 @@ Complete guide for running PPO fine-tuning on a live Clash Royale game. The agen
 5. [Phase 2: Full Fine-Tuning](#5-phase-2-full-fine-tuning)
 6. [Phase 3: Evaluation](#6-phase-3-evaluation)
 7. [Operator Workflow](#7-operator-workflow)
-8. [Reward Function Reference](#8-reward-function-reference)
-9. [Hyperparameter Reference](#9-hyperparameter-reference)
-10. [CLI Reference](#10-cli-reference)
-11. [Monitoring Training](#11-monitoring-training)
-12. [Episode Boundary Safety](#12-episode-boundary-safety)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Output Files](#14-output-files)
+8. [Stopping and Resuming Training](#8-stopping-and-resuming-training)
+9. [Reward Function Reference](#9-reward-function-reference)
+10. [Hyperparameter Reference](#10-hyperparameter-reference)
+11. [CLI Reference](#11-cli-reference)
+12. [Monitoring Training](#12-monitoring-training)
+13. [Episode Boundary Safety](#13-episode-boundary-safety)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Output Files](#15-output-files)
 
 ---
 
@@ -367,7 +368,119 @@ Use `--no-pause` to skip the Enter prompt between episodes. The agent will auto-
 
 ---
 
-## 8. Reward Function Reference
+## 8. Stopping and Resuming Training
+
+Training runs across multiple sessions. You can safely stop at any time and resume later from a saved checkpoint.
+
+### How to Stop
+
+There are two safe ways to stop:
+
+1. **Between episodes:** When the script prints `Press Enter to continue...`, simply close the terminal or press `Ctrl+C`. The model was already saved after the last episode.
+2. **Mid-episode:** Press `Ctrl+C` during gameplay. The trainer catches the interrupt and saves a checkpoint before exiting.
+
+In both cases, the most recent model is written to `models/ppo/latest_ppo.zip`.
+
+### What Gets Saved
+
+Each `.zip` checkpoint contains:
+- **Policy weights** (policy head + value head + feature extractor)
+- **Optimizer state** (Adam momentum/variance terms)
+- **Training metadata** (step count, hyperparameters)
+
+This means resuming picks up the model exactly where it left off — no lost learning.
+
+### How to Resume
+
+Use `--resume` with the checkpoint path. Keep all other flags the same as the original run:
+
+```bash
+# Example: stopped during Phase 1 at episode 8, resume for 7 more
+python ppo_module/run_ppo.py \
+    --resume models/ppo/latest_ppo.zip \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
+    --num-episodes 7 \
+    --freeze-extractor \
+    --n-frames 3 \
+    --lr 1e-4 \
+    --n-steps 700 \
+    --ent-start 0.02 \
+    --ent-end 0.005 \
+    --reward-scale 0.1 \
+    --templates-dir ppo_module/templates
+```
+
+You can also resume from a specific episode checkpoint instead of `latest_ppo.zip`:
+
+```bash
+--resume models/ppo/ppo_ep8.zip
+```
+
+### `--bc-weights` vs `--resume`
+
+| Flag | What It Does | When to Use |
+|------|-------------|-------------|
+| `--bc-weights` | Initializes a **fresh** PPO model from BC feature extractor. Policy heads, value heads, and optimizer are randomly initialized. | Starting Phase 1 for the first time |
+| `--resume` | Loads a **full** PPO checkpoint (weights + optimizer + metadata). Continues training from where it left off. | Resuming any interrupted run, or transitioning Phase 1 → Phase 2 |
+
+**Do NOT use `--bc-weights` to resume** — it will reset all PPO training progress.
+
+### Transitioning Between Phases
+
+When moving from Phase 1 (frozen) to Phase 2 (unfrozen), use `--resume` and change the relevant flags:
+
+```bash
+# Phase 1 → Phase 2: resume checkpoint, drop --freeze-extractor, lower LR
+python ppo_module/run_ppo.py \
+    --resume models/ppo/latest_ppo.zip \
+    --capture-region 0,0,1920,1080 \
+    --game-region 655,1,609,1077 \
+    --num-episodes 25 \
+    --lr 3e-5 \
+    --n-frames 3 \
+    --ent-start 0.01 \
+    --ent-end 0.005 \
+    --reward-scale 0.1 \
+    --templates-dir ppo_module/templates
+```
+
+Key differences from Phase 1:
+- `--resume` instead of `--bc-weights`
+- No `--freeze-extractor` (feature extractor is now trainable)
+- Lower `--lr 3e-5` (to protect BC features)
+- Lower `--ent-start 0.01` (policy is already partially learned)
+
+### What Resets on Resume
+
+| State | Carries Over? | Notes |
+|-------|--------------|-------|
+| Model weights | Yes | Policy, value, feature extractor all preserved |
+| Optimizer state | Yes | Adam momentum/variance preserved |
+| Episode counter (console) | No | Restarts from 1 in the new run |
+| JSONL log | Appended | Prior entries remain in `training_log.jsonl` |
+| TensorBoard | New run | New event file created; prior data still visible |
+| Entropy schedule | Resets | Based on new `--num-episodes` and `--ent-start/end` |
+| LR schedule | Resets | Cosine annealing restarts from new `--lr` |
+
+### Available Checkpoints
+
+After each episode, the trainer saves:
+
+```
+models/ppo/
+    latest_ppo.zip     # Overwritten each episode (always most recent)
+    ppo_ep1.zip        # Episode 1 snapshot
+    ppo_ep2.zip        # Episode 2 snapshot
+    ...
+    final_ppo.zip      # Written when training completes normally
+```
+
+Use `latest_ppo.zip` for typical resumes. Use `ppo_epN.zip` to roll back to a specific episode (e.g., if later episodes degraded performance).
+
+---
+
+## 9. Reward Function Reference
 
 All rewards are multiplied by `reward_scale` (default 0.1) before being passed to the agent. The values below show **pre-scale** weights and **post-scale** effective values.
 
@@ -426,7 +539,7 @@ Tower counts only decrease during a game (towers get destroyed, never rebuilt). 
 
 ---
 
-## 9. Hyperparameter Reference
+## 10. Hyperparameter Reference
 
 ### PPOConfig Defaults
 
@@ -515,7 +628,7 @@ Default: `0.02 -> 0.005` over `num_episodes`. Higher entropy early encourages ex
 
 ---
 
-## 10. CLI Reference
+## 11. CLI Reference
 
 ```
 python ppo_module/run_ppo.py [OPTIONS]
@@ -586,7 +699,7 @@ python ppo_module/run_ppo.py [OPTIONS]
 
 ---
 
-## 11. Monitoring Training
+## 12. Monitoring Training
 
 ### Console Output
 
@@ -635,7 +748,7 @@ python ppo_module/run_ppo.py [OPTIONS]
 
 ---
 
-## 12. Episode Boundary Safety
+## 13. Episode Boundary Safety
 
 Four layers prevent multiple games from bleeding into one episode:
 
@@ -657,7 +770,7 @@ Non-terminal rewards are clamped to `[-15.0, +15.0]` per step. Even if anomaly d
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### Game Window Not Found
 
@@ -720,7 +833,7 @@ python ppo_module/run_ppo.py ... --device cpu --batch-size 32
 
 ---
 
-## 14. Output Files
+## 15. Output Files
 
 ### Model Checkpoints
 

@@ -53,11 +53,18 @@ class CRMetricsCallback(BaseCallback):
         self._total_episodes = 0
         self._anomaly_count = 0
         self._truncation_count = 0
+        self._action_log_file = None
 
     def _on_training_start(self) -> None:
         if self._log_path:
             os.makedirs(os.path.dirname(self._log_path) or ".", exist_ok=True)
             self._log_file = open(self._log_path, "a")
+            # Per-step action log alongside the episode log
+            action_log_path = self._log_path.replace(
+                "training_log.jsonl", "action_log.jsonl"
+            )
+            if action_log_path != self._log_path:
+                self._action_log_file = open(action_log_path, "a")
 
     def _on_step(self) -> bool:
         # Check if any environment reported episode completion
@@ -68,6 +75,25 @@ class CRMetricsCallback(BaseCallback):
                 self._anomaly_count += 1
             if info.get("truncation_reason"):
                 self._truncation_count += 1
+
+            # Log per-step card actions to action_log.jsonl
+            if self._action_log_file and info.get("action_executed", False):
+                card_name = info.get("action_card_name", "")
+                if card_name:  # only log actual card plays, not noops
+                    action_entry = {
+                        "timestep": self.num_timesteps,
+                        "episode": self._total_episodes + 1,
+                        "step": info.get("step", 0),
+                        "card_name": card_name,
+                        "card_id": info.get("action_card_id", -1),
+                        "row": info.get("action_row", -1),
+                        "col": info.get("action_col", -1),
+                        "elixir": info.get("elixir", -1),
+                    }
+                    self._action_log_file.write(
+                        json.dumps(action_entry) + "\n"
+                    )
+                    self._action_log_file.flush()
 
             if "outcome" in info or "episode_length" in info:
                 self._record_episode(info)
@@ -157,6 +183,9 @@ class CRMetricsCallback(BaseCallback):
         if self._log_file is not None:
             self._log_file.close()
             self._log_file = None
+        if self._action_log_file is not None:
+            self._action_log_file.close()
+            self._action_log_file = None
 
         if self.verbose > 0 and self._total_episodes > 0:
             n = len(self._outcomes)
