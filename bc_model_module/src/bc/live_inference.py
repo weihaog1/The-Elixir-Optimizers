@@ -312,6 +312,7 @@ class PerceptionAdapter:
         self._detector = None
         self._card_predictor = None
         self.perception_active = False
+        self._frame_count: int = 0  # total frames processed (for periodic diagnostics)
 
         # Class mapping attributes (populated by _try_load_mappings)
         self._class_name_to_id: Optional[dict] = None
@@ -480,6 +481,8 @@ class PerceptionAdapter:
           4: CH_ENEMY_TOWER_HP  - enemy tower HP fraction
           5: CH_SPELL      - spell effect count (additive)
         """
+        self._frame_count += 1
+
         # Run CRDetector
         detections = self._detector.detect(frame)
 
@@ -606,6 +609,26 @@ class PerceptionAdapter:
                 row_start = base + row * _GRID_COLS
                 mask[row_start:row_start + _GRID_COLS] = True
 
+        # Periodic mask/elixir diagnostic (every 10 frames)
+        if self._config.verbose and self._frame_count % 10 == 0:
+            card_mask_counts = []
+            for i in range(4):
+                card_actions = int(mask[i * _GRID_CELLS:(i + 1) * _GRID_CELLS].sum())
+                card_mask_counts.append(card_actions)
+            costs_str = ", ".join(
+                f"{card_names[i]}={self._card_elixir_cost.get(card_names[i], '?')}"
+                if card_names[i] and self._card_elixir_cost
+                else f"slot{i}=--"
+                for i in range(4)
+            )
+            print(
+                f"[Perception] Frame {self._frame_count}: "
+                f"elixir={current_elixir}/10 | "
+                f"cards=[{costs_str}] | "
+                f"mask_valid=[{card_mask_counts[0]},{card_mask_counts[1]},"
+                f"{card_mask_counts[2]},{card_mask_counts[3]}]+noop"
+            )
+
         return {
             "obs": {
                 "arena": torch.from_numpy(arena).float(),
@@ -685,9 +708,12 @@ class PerceptionAdapter:
                 cost = self._card_elixir_cost.get(class_name, 0)
                 vector[0, 19 + i] = cost / self._max_elixir
 
-        if self._config.verbose and not hasattr(self, "_card_logged"):
+        # Periodic diagnostic save (first frame + every 100 frames)
+        should_save_cards = self._config.verbose and (
+            not hasattr(self, "_card_logged") or self._frame_count % 100 == 0
+        )
+        if should_save_cards:
             self._card_logged = True
-            # Save diagnostic card crops on first frame
             try:
                 log_dir = self._config.log_dir
                 os.makedirs(log_dir, exist_ok=True)
@@ -759,8 +785,13 @@ class PerceptionAdapter:
         fill_ratio = (fill_cols[-1] + 1) / len(col_has_fill)
         current_elixir = max(0, min(10, int(fill_ratio * 10)))
 
-        # One-shot diagnostic save for calibration
-        if self._config.verbose and not hasattr(self, "_elixir_logged"):
+        # Periodic diagnostic save (first frame + every 100 frames)
+        # Helps verify the bar reader works during actual gameplay, not just
+        # on the (potentially pre-game) first frame.
+        should_save = self._config.verbose and (
+            not hasattr(self, "_elixir_logged") or self._frame_count % 100 == 0
+        )
+        if should_save:
             self._elixir_logged = True
             try:
                 log_dir = self._config.log_dir
