@@ -81,14 +81,14 @@ class CRMetricsCallback(BaseCallback):
                 card_name = info.get("action_card_name", "")
                 if card_name:  # only log actual card plays, not noops
                     action_entry = {
-                        "timestep": self.num_timesteps,
-                        "episode": self._total_episodes + 1,
-                        "step": info.get("step", 0),
+                        "timestep": int(self.num_timesteps),
+                        "episode": int(self._total_episodes + 1),
+                        "step": int(info.get("step", 0)),
                         "card_name": card_name,
-                        "card_id": info.get("action_card_id", -1),
-                        "row": info.get("action_row", -1),
-                        "col": info.get("action_col", -1),
-                        "elixir": info.get("elixir", -1),
+                        "card_id": int(info.get("action_card_id", -1)),
+                        "row": int(info.get("action_row", -1)),
+                        "col": int(info.get("action_col", -1)),
+                        "elixir": int(info.get("elixir", -1)),
                     }
                     self._action_log_file.write(
                         json.dumps(action_entry) + "\n"
