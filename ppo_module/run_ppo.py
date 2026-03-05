@@ -112,6 +112,12 @@ def parse_args():
         help="Game area within window: left,top,width,height (e.g. 655,1,609,1077)",
     )
 
+    # Card classification
+    parser.add_argument(
+        "--card-confidence", type=float, default=0.6,
+        help="Minimum card classifier confidence to unmask a card (default: 0.6)",
+    )
+
     # Training
     parser.add_argument(
         "--num-episodes", type=int, default=15,
@@ -254,6 +260,7 @@ def main():
         vis_save_dir=args.vis_save_dir,
         n_frames=args.n_frames,
         game_region=game_region,
+        card_confidence_threshold=args.card_confidence,
     )
 
     ppo_config = PPOConfig(

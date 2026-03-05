@@ -83,6 +83,7 @@ class LiveConfig:
         os.path.join("models", "best_yolov8s_50epochs_fixed_pregen_set.pt"),
     ])
     card_classifier_path: str = os.path.join("models", "card_classifier.pt")
+    card_confidence_threshold: float = 0.6  # min softmax confidence to trust a card classification
 
     # --- Policy ---
     confidence_threshold: float = 0.0
@@ -653,6 +654,14 @@ class PerceptionAdapter:
             try:
                 class_name, confidence = self._card_predictor.predict(crop)
             except Exception:
+                continue
+
+            # Skip low-confidence predictions to avoid misclassified cards
+            if confidence < self._config.card_confidence_threshold:
+                if self._config.verbose and not hasattr(self, "_card_logged"):
+                    print(f"[Perception] Card {i}: {class_name} SKIPPED "
+                          f"(confidence {confidence:.2f} < "
+                          f"{self._config.card_confidence_threshold})")
                 continue
 
             if self._config.verbose and not hasattr(self, "_card_logged"):

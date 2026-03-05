@@ -81,6 +81,7 @@ class EnvConfig:
         "models/best_yolov8s_50epochs_fixed_pregen_set.pt",
     ])
     card_classifier_path: str = "models/card_classifier.pt"
+    card_confidence_threshold: float = 0.6  # min softmax confidence to trust card classification
 
     # Safety
     dry_run: bool = False
@@ -169,6 +170,7 @@ class ClashRoyaleEnv(gymnasium.Env):
             detector_model_paths=self._config.detector_model_paths,
             card_classifier_path=self._config.card_classifier_path,
             dry_run=self._config.dry_run,
+            card_confidence_threshold=self._config.card_confidence_threshold,
             action_cooldown=0.0,  # PPO controls timing, not cooldown
             max_actions_per_minute=999,  # No rate limiting for PPO
             confidence_threshold=0.0,
