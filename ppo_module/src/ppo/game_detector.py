@@ -68,7 +68,7 @@ class DetectorConfig:
     template_match_threshold: float = 0.7
 
     # Minimum consecutive frames in a phase before confirming transition
-    phase_stability_frames: int = 3
+    phase_stability_frames: int = 1  # Reduced from 3 to catch END_SCREEN faster
 
 
 class GamePhaseDetector:

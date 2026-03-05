@@ -538,6 +538,11 @@ class ClashRoyaleEnv(gymnasium.Env):
             if self._config.verbose:
                 print("[Env] WARNING: Game start timeout. Proceeding anyway.")
 
+        # Wait for the game state to stabilize after detection.
+        # This prevents capturing loading/transition frames that would cause
+        # tower count anomalies on the first few steps.
+        time.sleep(2.0)
+
         # Capture initial frame and run perception (wait for focus if needed)
         frame = self._capture.capture()
         frame = self._crop_game_region(frame)
