@@ -68,7 +68,7 @@ for pkg_name, pkg_path in _sub_pkgs.items():
 
 # Main codebase subpackages
 _main_src = os.path.join(PROJECT_ROOT, "src", "src")
-for sub in ("generation", "detection", "classification", "data", "pipeline"):
+for sub in ("generation", "detection", "classification", "data", "pipeline", "yolov8_custom", "ocr"):
     pkg_name = f"src.{sub}"
     mod = _types.ModuleType(pkg_name)
     mod.__path__ = [os.path.join(_main_src, sub)]

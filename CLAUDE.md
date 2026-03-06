@@ -215,8 +215,8 @@ python -m pytest docs/josh/ -v --ignore=docs/josh/click_logger
 
 ## Known Limitations
 
-1. **No belonging output from YOLO:** Model outputs 6-column detections. StateBuilder uses Y-position heuristic (`arena_mid = frame_height * 0.42`) which fails when troops cross the river.
-2. **Domain gap (mAP50=0.804):** Synthetic training data does not perfectly match real Google Play Games screenshots.
+1. **~~No belonging output from YOLO~~ RESOLVED:** Dual ComboDetector (D1+D2 YOLOv8m) now outputs belonging (ally=0/enemy=1) directly. Use `create_dual_pipeline()` — Y-position heuristic only used as fallback for legacy single-model path.
+2. **Domain gap:** Synthetic training data does not perfectly match real screenshots. Dual detector mAP50: D1=0.798, D2=0.853 (improved from single model 0.804).
 3. **Single-frame observations:** No temporal context (troop movement direction, elixir generation rate).
 4. **Card classifier not wired into main StateBuilder:** Only available via EnhancedStateBuilder wrapper in dataset_builder_module.
 5. **Coordinate inconsistencies:** 540x960 base resolution in screen_regions.py vs 1080x1920 pixel coords in some files. Normalized coords (0-1) bridge the gap.

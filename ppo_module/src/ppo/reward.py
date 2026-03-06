@@ -44,9 +44,9 @@ class RewardConfig:
     elixir_waste_threshold: float = 0.95  # 9.5/10 elixir
     elixir_high_penalty: float = -0.02  # mild penalty at 8+ elixir
     elixir_high_threshold: float = 0.8  # 8/10 elixir
-    unit_advantage_weight: float = 0.0  # DISABLED: belonging heuristic unreliable
+    unit_advantage_weight: float = 0.03  # model belonging from ComboDetector
     elixir_spent_bonus: float = 0.005  # per elixir cost of card played
-    defensive_placement_bonus: float = 0.0  # DISABLED: belonging heuristic unreliable
+    defensive_placement_bonus: float = 0.05  # model belonging from ComboDetector
     defensive_col_radius: int = 3  # columns within enemy center to earn bonus
     low_elixir_noop_bonus: float = 0.01  # for choosing noop when elixir < threshold
     low_elixir_noop_threshold: float = 0.5  # 5/10 elixir

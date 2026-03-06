@@ -8,7 +8,7 @@ Architecture:
     BCPolicy (predict) -> ActionDispatcher (PyAutoGUI with window offset)
 
 Perception Tiers:
-    Tier 2: CRDetector + CardPredictor (real class IDs, card classification)
+    Tier 2: ComboDetector + CardPredictor + OCR (dual YOLO, belonging, elixir)
             - Available when ultralytics + model files present
     Tier 3: Zero-filled observations (empty arena, mid-game defaults)
             - Always works, model relies on learned biases only
@@ -80,8 +80,13 @@ class LiveConfig:
     # --- Perception ---
     use_perception: bool = True
     detector_model_paths: list[str] = field(default_factory=lambda: [
-        os.path.join("models", "best_yolov8s_50epochs_fixed_pregen_set.pt"),
+        os.path.join("models", "dual_d1_best.pt"),
+        os.path.join("models", "dual_d2_best.pt"),
     ])
+    split_config_path: str = os.path.join("configs", "split_config.json")
+    detector_conf: float = 0.25
+    detector_imgsz: int = 960
+    ocr_interval: int = 5  # run OCR every N frames to amortize cost
     card_classifier_path: str = os.path.join("models", "card_classifier.pt")
     card_confidence_threshold: float = 0.6  # min softmax confidence to trust a card classification
 
@@ -127,20 +132,8 @@ _CARD_Y_END = 920
 _BASE_W = 540
 _BASE_H = 960
 
-# Elixir bar region (fraction of frame dimensions, 540x960 base)
-# The pink/purple fill bar sits at y=750-770, between arena and card bar.
-_ELIXIR_BAR_Y_START_FRAC = 750.0 / 960.0
-_ELIXIR_BAR_Y_END_FRAC = 770.0 / 960.0
-_ELIXIR_BAR_X_START_FRAC = 110.0 / 540.0  # after elixir icon/number
-_ELIXIR_BAR_X_END_FRAC = 520.0 / 540.0    # right edge of bar
 
-# Elixir bar detection thresholds (HSV saturation + value only).
-# The bar is the only bright, saturated element in this narrow strip —
-# filled pixels are pink/purple (high S, high V), empty pixels are dark.
-# No hue constraint needed, which avoids issues with pink wrapping
-# around the 0/180 hue boundary in OpenCV.
-_ELIXIR_SAT_LOW = 50
-_ELIXIR_VAL_LOW = 80
+
 
 
 def _action_to_placement(action_idx: int):
@@ -298,7 +291,7 @@ class GameCapture:
 class PerceptionAdapter:
     """Converts captured frames into observation tensors for the BC policy.
 
-    Tier 2 (CRDetector + CardPredictor): Uses CRDetector for YOLO
+    Tier 2 (ComboDetector + CardPredictor + OCR): Uses ComboDetector for YOLO
     inference with real CLASS_NAME_TO_ID mapping, and CardPredictor for
     card hand classification. Arena uses proper 6-channel encoding.
 
@@ -311,6 +304,8 @@ class PerceptionAdapter:
         self._project_root = project_root
         self._detector = None
         self._card_predictor = None
+        self._ocr = None
+        self._ocr_elixir_cache: int = 5  # last known elixir value
         self.perception_active = False
         self._frame_count: int = 0  # total frames processed (for periodic diagnostics)
 
@@ -327,38 +322,63 @@ class PerceptionAdapter:
             self._try_init_detector(config)
             self._try_load_mappings()
             self._try_init_card_predictor(config)
+            self._try_init_ocr()
 
     def _try_init_detector(self, config: LiveConfig) -> None:
-        """Attempt to load CRDetector (YOLOv8 wrapper)."""
+        """Attempt to load ComboDetector (dual YOLOv8m with belonging)."""
         try:
-            from src.detection.model import CRDetector
+            from src.detection.combo_detector import ComboDetector
         except ImportError as e:
-            print(f"[Perception] CRDetector not available: {e}")
+            print(f"[Perception] ComboDetector not available: {e}")
             print("[Perception] Using zero-filled observations.")
             return
 
+        # Resolve model paths
+        model_paths = []
         for path in config.detector_model_paths:
             full_path = path
             if self._project_root and not os.path.isabs(path):
                 full_path = os.path.join(self._project_root, path)
+            model_paths.append(full_path)
 
-            if os.path.exists(full_path):
-                try:
-                    self._detector = CRDetector(
-                        model_path=full_path,
-                        confidence_threshold=0.5,
-                        iou_threshold=0.45,
-                    )
-                    self.perception_active = True
-                    print(f"[Perception] Loaded CRDetector: {full_path}")
-                    return
-                except Exception as e:
-                    print(f"[Perception] Failed to load {full_path}: {e}")
-            else:
-                print(f"[Perception] Model not found: {full_path}")
+        # Check all model files exist
+        for fp in model_paths:
+            if not os.path.exists(fp):
+                print(f"[Perception] Model not found: {fp}")
+                print("[Perception] Using zero-filled observations.")
+                return
 
-        print("[Perception] No detector models loaded. "
-              "Using zero-filled observations.")
+        # Resolve split config
+        split_cfg = config.split_config_path
+        if self._project_root and not os.path.isabs(split_cfg):
+            split_cfg = os.path.join(self._project_root, split_cfg)
+        if not os.path.exists(split_cfg):
+            print(f"[Perception] Split config not found: {split_cfg}")
+            print("[Perception] Using zero-filled observations.")
+            return
+
+        # Auto-detect device
+        import torch as _torch
+        device = "cuda" if _torch.cuda.is_available() else "cpu"
+        if device == "cpu":
+            print("[Perception] WARNING: CUDA not available, running ComboDetector on CPU (slower).")
+
+        try:
+            self._detector = ComboDetector(
+                model_paths=model_paths,
+                split_config_path=split_cfg,
+                device=device,
+                conf=config.detector_conf,
+                iou=0.45,
+                imgsz=config.detector_imgsz,
+            )
+            self._detector.warmup()
+            self.perception_active = True
+            print(f"[Perception] Loaded ComboDetector ({len(model_paths)} models, "
+                  f"device={device})")
+        except Exception as e:
+            print(f"[Perception] Failed to load ComboDetector: {e}")
+            print("[Perception] Using zero-filled observations.")
 
     def _try_load_mappings(self) -> None:
         """Load class name -> ID and unit type mappings from encoder_constants."""
@@ -409,6 +429,16 @@ class PerceptionAdapter:
         except Exception as e:
             print(f"[Perception] Failed to load CardPredictor: {e}")
 
+    def _try_init_ocr(self) -> None:
+        """Attempt to load PaddleOCR-based elixir reader."""
+        try:
+            from src.ocr.text_extractor import GameTextExtractor
+            self._ocr = GameTextExtractor()
+            print("[Perception] OCR enabled for elixir reading")
+        except Exception as e:
+            print(f"[Perception] OCR not available: {e}")
+            print("[Perception] Elixir will default to 5.")
+
     def process_frame(self, frame: np.ndarray) -> dict:
         """Process a frame into obs tensors, action mask, and metadata.
 
@@ -453,25 +483,42 @@ class PerceptionAdapter:
             "elixir": 5,
         }
 
-    # Map YOLO tower class names to vector HP slot indices.
-    # Vector layout: [3]=player_king_hp, [4]=player_left_princess_hp,
-    # [5]=player_right_princess_hp, [6]=enemy_king_hp,
-    # [7]=enemy_left_princess_hp, [8]=enemy_right_princess_hp
-    _TOWER_HP_SLOT: dict[str, tuple[int, bool]] = {
-        "king_tower_player": (3, True),
-        "princess_tower_left_player": (4, True),
-        "princess_tower_right_player": (5, True),
-        "king_tower_enemy": (6, False),
-        "princess_tower_left_enemy": (7, False),
-        "princess_tower_right_enemy": (8, False),
+    # Map 155-class tower names to vector HP slots using model belonging.
+    # Keys: class names from global 155-class space.
+    # Values: (tower_type, position_hint)
+    #   tower_type: "king" or "princess"
+    #   position_hint: "center" for king, None for princess (infer from x-coord)
+    _TOWER_155_MAP: dict[str, tuple[str, Optional[str]]] = {
+        "king-tower": ("king", "center"),
+        "queen-tower": ("princess", None),
+        "cannoneer-tower": ("princess", None),
+        "dagger-duchess-tower": ("princess", None),
     }
 
+    def _assign_tower_hp_slot(
+        self, tower_type: str, is_ally: bool, is_left: bool,
+    ) -> int:
+        """Return vector index (3-8) for a tower's HP slot.
+
+        Vector layout: [3]=ally_king, [4]=ally_left_princess,
+        [5]=ally_right_princess, [6]=enemy_king,
+        [7]=enemy_left_princess, [8]=enemy_right_princess.
+        """
+        if tower_type == "king":
+            return 3 if is_ally else 6
+        else:  # princess
+            if is_ally:
+                return 4 if is_left else 5
+            else:
+                return 7 if is_left else 8
+
     def _process_with_detection(self, frame: np.ndarray) -> dict:
-        """Tier 2: CRDetector with proper 6-channel arena encoding.
+        """Tier 2: ComboDetector with proper 6-channel arena encoding.
 
         Uses real CLASS_NAME_TO_ID for unit identity and UNIT_TYPE_MAP for
-        channel assignment. CardPredictor populates vector card features.
-        Tower counts are derived from YOLO detections (not hardcoded).
+        channel assignment. Belonging comes from dual detector model output.
+        CardPredictor populates vector card features.
+        Tower counts are derived from detections (not hardcoded).
 
         Arena channels:
           0: CH_CLASS_ID   - class_idx / NUM_CLASSES (0 = empty)
@@ -483,15 +530,16 @@ class PerceptionAdapter:
         """
         self._frame_count += 1
 
-        # Run CRDetector
-        detections = self._detector.detect(frame)
+        # Run ComboDetector with scaled arena cutoff
+        fh, fw = frame.shape[:2]
+        arena_cutoff = int(0.807 * fh)  # 1550/1920 scaled to frame height
+        detections = self._detector.detect_to_list(frame, arena_cutoff=arena_cutoff)
 
         # Build arena tensor
         arena = np.zeros(
             (1, _GRID_ROWS, _GRID_COLS, _NUM_ARENA_CHANNELS),
             dtype=np.float32,
         )
-        fh, fw = frame.shape[:2]
 
         detection_dicts = []
 
@@ -509,8 +557,8 @@ class PerceptionAdapter:
             col = max(0, min(_GRID_COLS - 1, int(x_norm * _GRID_COLS)))
             row = max(0, min(_GRID_ROWS - 1, int(arena_y_frac * _GRID_ROWS)))
 
-            # Belonging heuristic: top half = enemy, bottom half = ally
-            is_ally = row >= 16
+            # Belonging from model output (0=ally, 1=enemy)
+            is_ally = (det.side == 0)
             belonging_val = -1.0 if is_ally else 1.0
 
             # Look up unit type
@@ -524,18 +572,20 @@ class PerceptionAdapter:
                 class_idx = self._class_name_to_id.get(det.class_name, 0)
 
             if unit_type == "tower":
-                # Assume alive at full HP (no OCR in Tier 2)
+                # Assume alive at full HP
                 ch = 3 if is_ally else 4  # CH_ALLY_TOWER_HP / CH_ENEMY_TOWER_HP
                 arena[0, row, col, ch] = 1.0
 
-                # Count tower and mark HP slot from class name
+                # Count tower and assign HP slot using 155-class names + belonging
                 if is_ally:
                     ally_tower_count += 1
                 else:
                     enemy_tower_count += 1
-                tower_slot = self._TOWER_HP_SLOT.get(det.class_name)
-                if tower_slot is not None:
-                    vec_idx, _ = tower_slot
+                tower_info = self._TOWER_155_MAP.get(det.class_name)
+                if tower_info is not None:
+                    tower_type, _ = tower_info
+                    is_left = (cx < fw / 2)
+                    vec_idx = self._assign_tower_hp_slot(tower_type, is_ally, is_left)
                     tower_hp_detected[vec_idx - 3] = True
             elif unit_type == "spell":
                 # Additive spell count
@@ -554,30 +604,40 @@ class PerceptionAdapter:
                 "confidence": det.confidence,
                 "class_name": det.class_name,
                 "unit_type": unit_type,
+                "side": det.side,
                 "_row": row,
             })
 
         # Vector features
         vector = np.zeros((1, _NUM_VECTOR_FEATURES), dtype=np.float32)
-        # Read elixir from the purple bar fill level (fast pixel check)
-        current_elixir = self._read_elixir_from_bar(frame)
+
+        # Read elixir via OCR (every N frames, cache between runs)
+        if self._ocr is not None and self._frame_count % self._config.ocr_interval == 0:
+            try:
+                ocr_results = self._ocr.extract_game_text(frame)
+                if ocr_results.elixir is not None:
+                    self._ocr_elixir_cache = ocr_results.elixir
+            except Exception:
+                pass  # keep cached value
+        current_elixir = self._ocr_elixir_cache
+
         vector[0, 0] = current_elixir / self._max_elixir
         vector[0, 1] = 0.4    # time_remaining / 300
 
-        # Tower HP: only set 1.0 for towers actually detected by YOLO
+        # Tower HP: only set 1.0 for towers actually detected
         for i in range(6):
             if tower_hp_detected[i]:
                 vector[0, 3 + i] = 1.0  # detected = alive at full HP
 
-        # Tower counts from YOLO detections (no longer hardcoded)
+        # Tower counts from detections (no longer hardcoded)
         vector[0, 9] = min(ally_tower_count, 3) / 3.0
         vector[0, 10] = min(enemy_tower_count, 3) / 3.0
 
-        # Count enemy units (non-tower, non-spell, top half of arena)
+        # Count enemy units using model belonging
         enemy_count = sum(
             1 for d in detection_dicts
             if d["unit_type"] in ("ground", "flying")
-            and d.get("_row", 0) < 16
+            and d.get("side", 1) == 1
         )
 
         # Card classification (if CardPredictor available)
@@ -731,99 +791,6 @@ class PerceptionAdapter:
 
         return card_names
 
-    def _read_elixir_from_bar(self, frame: np.ndarray) -> int:
-        """Read current elixir from the horizontal bar fill level.
-
-        The Clash Royale elixir bar is a pink/purple horizontal bar at
-        y=750-770 (540x960 base). This method measures how far it extends
-        from left to right and maps that to an integer 0-10.
-
-        Detection uses saturation + brightness only (no hue constraint)
-        because the bar's pink color wraps around the 0/180 hue boundary
-        in OpenCV HSV. In this narrow strip, the only bright/saturated
-        pixels are the elixir fill — empty pixels are dark.
-
-        Args:
-            frame: BGR numpy array of the game frame.
-
-        Returns:
-            Integer elixir value in [0, 10].
-        """
-        fh, fw = frame.shape[:2]
-
-        # Crop the elixir bar region
-        y1 = int(_ELIXIR_BAR_Y_START_FRAC * fh)
-        y2 = int(_ELIXIR_BAR_Y_END_FRAC * fh)
-        x1 = int(_ELIXIR_BAR_X_START_FRAC * fw)
-        x2 = int(_ELIXIR_BAR_X_END_FRAC * fw)
-
-        # Bounds check
-        y1 = max(0, min(y1, fh - 1))
-        y2 = max(y1 + 1, min(y2, fh))
-        x1 = max(0, min(x1, fw - 1))
-        x2 = max(x1 + 1, min(x2, fw))
-
-        crop = frame[y1:y2, x1:x2]
-        if crop.size == 0:
-            return 5  # fallback mid-game assumption
-
-        # Detect filled bar pixels via saturation + brightness.
-        # The pink/purple bar is the only bright, saturated element in
-        # this narrow strip. Empty bar pixels are near-black.
-        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        bar_mask = (
-            (hsv[:, :, 1] >= _ELIXIR_SAT_LOW)
-            & (hsv[:, :, 2] >= _ELIXIR_VAL_LOW)
-        )
-
-        # Find rightmost filled column to measure fill level
-        col_has_fill = bar_mask.any(axis=0)  # shape (width,)
-        fill_cols = np.where(col_has_fill)[0]
-        if len(fill_cols) == 0:
-            return 0
-
-        fill_ratio = (fill_cols[-1] + 1) / len(col_has_fill)
-        current_elixir = max(0, min(10, int(fill_ratio * 10)))
-
-        # Periodic diagnostic save (first frame + every 100 frames)
-        # Helps verify the bar reader works during actual gameplay, not just
-        # on the (potentially pre-game) first frame.
-        should_save = self._config.verbose and (
-            not hasattr(self, "_elixir_logged") or self._frame_count % 100 == 0
-        )
-        if should_save:
-            self._elixir_logged = True
-            try:
-                log_dir = self._config.log_dir
-                os.makedirs(log_dir, exist_ok=True)
-                cv2.imwrite(
-                    os.path.join(log_dir, "elixir_bar_crop.png"), crop
-                )
-                mask_img = bar_mask.astype(np.uint8) * 255
-                cv2.imwrite(
-                    os.path.join(log_dir, "elixir_bar_mask.png"), mask_img
-                )
-                # Save full frame with elixir bar region highlighted
-                debug_frame = frame.copy()
-                cv2.rectangle(debug_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(
-                    debug_frame, f"elixir={current_elixir}",
-                    (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0, 255, 0), 1,
-                )
-                cv2.imwrite(
-                    os.path.join(log_dir, "frame_elixir_debug.png"),
-                    debug_frame,
-                )
-                print(
-                    f"[Perception] Elixir bar: {current_elixir}/10 "
-                    f"(fill={fill_ratio:.2f}, crop={crop.shape}, "
-                    f"region=({x1},{y1})-({x2},{y2}) in {fw}x{fh})"
-                )
-            except Exception:
-                pass
-
-        return current_elixir
 
 
 # ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
+import torch
 
 from ..detection.model import CRDetector, Detection
 from ..ocr.text_extractor import GameTextExtractor, GameOCRResults
@@ -21,6 +22,7 @@ class StateBuilder:
     """Builds game state from detection and OCR results."""
 
     # Mapping from detection class names to tower info
+    # Legacy 6-class tower model (side encoded in class name)
     TOWER_CLASS_MAP = {
         "king_tower_player": ("king", "center", 0),
         "king_tower_enemy": ("king", "center", 1),
@@ -30,25 +32,45 @@ class StateBuilder:
         "princess_tower_right_enemy": ("princess", "right", 1),
     }
 
+    # 155-class tower names (side comes from belonging output)
+    TOWER_155_MAP = {
+        "king-tower": ("king", "center"),
+        "queen-tower": ("princess", None),       # position inferred from x-coord
+        "cannoneer-tower": ("princess", None),    # variant of princess tower
+        "dagger-duchess-tower": ("princess", None),
+    }
+
+    # Arena midpoint x-coordinate for left/right tower assignment (at 1080px width)
+    ARENA_MID_X = 540
+
     def __init__(
         self,
-        detector: Optional[CRDetector] = None,
+        detector=None,
         ocr_extractor: Optional[GameTextExtractor] = None,
         detection_model_path: Optional[str] = None,
         enable_ocr: bool = True,
         device: Optional[str] = None,
+        combo_detector=None,
+        arena_cutoff: int = 1550,
     ):
         """Initialize the state builder.
 
         Args:
-            detector: Pre-initialized detector instance.
+            detector: Pre-initialized CRDetector instance (legacy single model).
             ocr_extractor: Pre-initialized OCR extractor instance.
-            detection_model_path: Path to detection model weights.
+            detection_model_path: Path to detection model weights (legacy).
             enable_ocr: Whether to enable OCR extraction.
             device: Device for inference ('cuda', 'cpu', or None for auto).
+            combo_detector: Pre-initialized ComboDetector (dual model with belonging).
+            arena_cutoff: Y-coordinate cutoff for arena cropping (ComboDetector).
         """
+        self.combo_detector = combo_detector
+        self.arena_cutoff = arena_cutoff
+
         # Initialize detector
-        if detector is not None:
+        if combo_detector is not None:
+            self.detector = None  # ComboDetector handles detection
+        elif detector is not None:
             self.detector = detector
         elif detection_model_path:
             self.detector = CRDetector(
@@ -105,9 +127,15 @@ class StateBuilder:
         )
 
         # Run detection
-        if run_detection and self.detector is not None:
-            detections = self.detector.detect(img)
-            self._process_detections(state, detections)
+        if run_detection:
+            if self.combo_detector is not None:
+                detections = self.combo_detector.detect_to_list(
+                    img, arena_cutoff=self.arena_cutoff,
+                )
+                self._process_detections(state, detections)
+            elif self.detector is not None:
+                detections = self.detector.detect(img)
+                self._process_detections(state, detections)
 
         # Run OCR
         if run_ocr and self.enable_ocr and self.ocr_extractor is not None:
@@ -123,6 +151,9 @@ class StateBuilder:
     ) -> None:
         """Process detection results and update game state.
 
+        Handles both legacy 6-class tower names and 155-class names
+        with belonging from model output.
+
         Args:
             state: GameState to update.
             detections: List of detections from detector.
@@ -132,51 +163,82 @@ class StateBuilder:
         for det in detections:
             confidences.append(det.confidence)
 
-            # Check if this is a tower
+            # Check legacy tower map first (6-class model)
             tower_info = self.TOWER_CLASS_MAP.get(det.class_name)
             if tower_info:
                 tower_type, position, belonging = tower_info
-                tower = Tower(
-                    tower_type=tower_type,
-                    position=position,
-                    belonging=belonging,
-                    bbox=det.bbox,
-                    confidence=det.confidence,
-                )
+                self._assign_tower(state, tower_type, position, belonging,
+                                   det.bbox, det.confidence)
+                continue
 
-                # Assign to correct slot
-                if tower_type == "king":
-                    if belonging == 0:
-                        state.player_king_tower = tower
-                    else:
-                        state.enemy_king_tower = tower
-                elif position == "left":
-                    if belonging == 0:
-                        state.player_left_princess = tower
-                    else:
-                        state.enemy_left_princess = tower
-                elif position == "right":
-                    if belonging == 0:
-                        state.player_right_princess = tower
-                    else:
-                        state.enemy_right_princess = tower
+            # Check 155-class tower names (dual detector with belonging)
+            tower_155 = self.TOWER_155_MAP.get(det.class_name)
+            if tower_155:
+                tower_type, position = tower_155
+                # Belonging comes from model output
+                belonging = det.side if det.side >= 0 else self._infer_unit_belonging(det, state.frame_height)
 
+                # Infer left/right from x-coordinate for princess towers
+                if position is None and tower_type != "king":
+                    center_x = (det.bbox[0] + det.bbox[2]) / 2
+                    position = "left" if center_x < self.ARENA_MID_X else "right"
+
+                self._assign_tower(state, tower_type, position, belonging,
+                                   det.bbox, det.confidence)
+                continue
+
+            # This is a unit (not a tower)
+            # Use model belonging if available, fall back to Y-position heuristic
+            if det.side >= 0:
+                belonging = det.side
             else:
-                # This is a unit
-                # Determine belonging based on position or other heuristics
                 belonging = self._infer_unit_belonging(det, state.frame_height)
 
-                unit = Unit(
-                    class_name=det.class_name,
-                    belonging=belonging,
-                    bbox=det.bbox,
-                    confidence=det.confidence,
-                )
-                state.units.append(unit)
+            unit = Unit(
+                class_name=det.class_name,
+                belonging=belonging,
+                bbox=det.bbox,
+                confidence=det.confidence,
+            )
+            state.units.append(unit)
 
         # Calculate average detection confidence
         if confidences:
             state.detection_confidence = sum(confidences) / len(confidences)
+
+    def _assign_tower(
+        self,
+        state: GameState,
+        tower_type: str,
+        position: str,
+        belonging: int,
+        bbox: Tuple[int, int, int, int],
+        confidence: float,
+    ) -> None:
+        """Assign a tower detection to the correct GameState slot."""
+        tower = Tower(
+            tower_type=tower_type,
+            position=position,
+            belonging=belonging,
+            bbox=bbox,
+            confidence=confidence,
+        )
+
+        if tower_type == "king":
+            if belonging == 0:
+                state.player_king_tower = tower
+            else:
+                state.enemy_king_tower = tower
+        elif position == "left":
+            if belonging == 0:
+                state.player_left_princess = tower
+            else:
+                state.enemy_left_princess = tower
+        elif position == "right":
+            if belonging == 0:
+                state.player_right_princess = tower
+            else:
+                state.enemy_right_princess = tower
 
     def _infer_unit_belonging(
         self,
@@ -423,7 +485,7 @@ def create_pipeline(
     enable_ocr: bool = True,
     device: Optional[str] = None,
 ) -> StateBuilder:
-    """Create a StateBuilder pipeline.
+    """Create a StateBuilder pipeline with single detector.
 
     Args:
         model_path: Path to detection model weights.
@@ -437,6 +499,56 @@ def create_pipeline(
         detection_model_path=model_path,
         enable_ocr=enable_ocr,
         device=device,
+    )
+
+
+def create_dual_pipeline(
+    d1_path: str,
+    d2_path: str,
+    split_config_path: str,
+    enable_ocr: bool = True,
+    device: Optional[str] = None,
+    conf: float = 0.25,
+    iou: float = 0.45,
+    imgsz: int = 960,
+    arena_cutoff: int = 1550,
+) -> StateBuilder:
+    """Create a StateBuilder pipeline with dual ComboDetector.
+
+    Uses two YOLOv8m models with belonging prediction — no Y-position
+    heuristic needed for ally/enemy assignment.
+
+    Args:
+        d1_path: Path to detector 1 weights (small sprites).
+        d2_path: Path to detector 2 weights (large sprites).
+        split_config_path: Path to split_config.json.
+        enable_ocr: Whether to enable OCR.
+        device: Device for inference.
+        conf: Confidence threshold.
+        iou: IoU threshold for NMS.
+        imgsz: Inference resolution.
+        arena_cutoff: Y-coordinate cutoff for arena cropping.
+
+    Returns:
+        StateBuilder instance with ComboDetector.
+    """
+    from ..detection.combo_detector import ComboDetector
+
+    combo = ComboDetector(
+        model_paths=[d1_path, d2_path],
+        split_config_path=split_config_path,
+        device=device or ("cuda" if torch.cuda.is_available() else "cpu"),
+        conf=conf,
+        iou=iou,
+        imgsz=imgsz,
+    )
+    combo.warmup()
+
+    return StateBuilder(
+        combo_detector=combo,
+        enable_ocr=enable_ocr,
+        device=device,
+        arena_cutoff=arena_cutoff,
     )
 
 

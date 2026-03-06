@@ -41,15 +41,38 @@ for det in detections:
     print(f"  Side: {'ally' if det.side == 0 else 'enemy'}")
 ```
 
-## Belonging Output (not yet active)
+**combo_detector.py** - Dual YOLOv8m detector with belonging. **NOW ACTIVE.**
+- `ComboDetector`: Wraps two YOLOv8m models (D1=small sprites, D2=large sprites) split by sprite size.
+  - `__init__(model_paths, split_config_path, device, conf, iou, imgsz)`
+  - `warmup()` -> runs dummy inference on both models
+  - `infer(frame, arena_cutoff)` -> (N, 7) ndarray: [x1, y1, x2, y2, conf, global_cls_id, belonging]
+  - `detect_to_list(frame, arena_cutoff)` -> List[Detection] (for StateBuilder compatibility)
+  - `names` dict: global class index -> name (155 classes from label_list)
+  - `split_config` dict: detector class split + index remapping
+- Pipeline: crop arena -> letterbox -> run both models in parallel (ThreadPoolExecutor) -> custom NMS with belonging -> remap local->global class indices -> cross-detector class-aware NMS for shared base classes -> merge by confidence
+- 13 base classes (towers, bars, UI) appear in both detectors and are deduplicated
+- Each detector has 85 local classes (72 unique + 13 base), mapped to global 155-class space
+- Uses `src/yolov8_custom/custom_utils.non_max_suppression` for belonging-aware NMS
 
-`src/yolov8_custom/custom_utils.py` (217 lines) contains a custom NMS function ported from KataCR that outputs 7-column detections: (x1, y1, x2, y2, conf, cls, belonging). The belonging column is a binary classification head (0=player, 1=enemy) trained alongside detection. To use it:
+## Belonging Output (NOW ACTIVE via ComboDetector)
 
-1. Retrain YOLOv8s with 12-column labels (class, x, y, w, h, belonging, state1-6) from KataCR's dataset
-2. Set `belonging_model=True` on CRDetector
-3. `_detect_with_belonging()` will use the custom NMS and populate `Detection.side` from the model output
+The dual detector models (D1 + D2) were trained with belonging labels. `ComboDetector` uses the custom NMS from `src/yolov8_custom/custom_utils.py` to output 7-column detections: (x1, y1, x2, y2, conf, cls, belonging). The belonging column is a binary classification (0=ally, 1=enemy) trained alongside detection.
 
-Until retraining, StateBuilder uses a Y-position heuristic for belonging (fails when troops cross the river).
+`StateBuilder` now uses `Detection.side` from model output when available, eliminating the Y-position heuristic that failed when troops crossed the river.
+
+## Dual Detector Performance
+
+| Property | D1 (Small Sprites) | D2 (Large Sprites) |
+|----------|--------------------|--------------------|
+| Architecture | YOLOv8m + belonging head | YOLOv8m + belonging head |
+| Classes | 85 (72 unique + 13 base) | 85 (72 unique + 13 base) |
+| Best mAP50 | 0.798 | 0.853 |
+| Best mAP50-95 | 0.547 | 0.665 |
+| Precision | 0.885 | 0.868 |
+| Recall | 0.730 | 0.827 |
+
+Model weights: `models/dual_d1_best.pt`, `models/dual_d2_best.pt`
+Split config: `configs/split_config.json`
 
 ## v12 Model Performance Notes
 

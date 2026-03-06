@@ -97,6 +97,18 @@ _pipe_pkg.__path__ = [os.path.join(_main_src, "pipeline")]  # type: ignore[attr-
 _pipe_pkg.__package__ = "src.pipeline"
 sys.modules["src.pipeline"] = _pipe_pkg
 
+# src.yolov8_custom -- custom NMS with belonging output (used by ComboDetector)
+_yolo_pkg = _types.ModuleType("src.yolov8_custom")
+_yolo_pkg.__path__ = [os.path.join(_main_src, "yolov8_custom")]  # type: ignore[attr-defined]
+_yolo_pkg.__package__ = "src.yolov8_custom"
+sys.modules["src.yolov8_custom"] = _yolo_pkg
+
+# src.ocr -- PaddleOCR text extraction for elixir reading
+_ocr_pkg = _types.ModuleType("src.ocr")
+_ocr_pkg.__path__ = [os.path.join(_main_src, "ocr")]  # type: ignore[attr-defined]
+_ocr_pkg.__package__ = "src.ocr"
+sys.modules["src.ocr"] = _ocr_pkg
+
 
 def parse_args():
     """Parse command-line arguments."""
@@ -153,10 +165,17 @@ def parse_args():
         help="Path to card classifier weights (default: models/card_classifier.pt)",
     )
     parser.add_argument(
-        "--detector-model",
+        "--detector-models",
+        type=str,
+        nargs="+",
+        default=[],
+        help="Paths to dual detector weights (default: models/dual_d1_best.pt models/dual_d2_best.pt)",
+    )
+    parser.add_argument(
+        "--split-config",
         type=str,
         default="",
-        help="Path to YOLO detector weights (default: models/best_yolov8s_50epochs_fixed_pregen_set.pt)",
+        help="Path to split_config.json for dual detector (default: configs/split_config.json)",
     )
 
     # Policy
@@ -261,9 +280,11 @@ def main():
         verbose=not args.quiet,
     )
 
-    # Override detector model path if provided
-    if args.detector_model:
-        config.detector_model_paths = [args.detector_model]
+    # Override detector model paths if provided
+    if args.detector_models:
+        config.detector_model_paths = args.detector_models
+    if args.split_config:
+        config.split_config_path = args.split_config
 
     engine = LiveInferenceEngine(config, project_root=PROJECT_ROOT)
     engine.run()

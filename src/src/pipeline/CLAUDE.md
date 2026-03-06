@@ -20,22 +20,45 @@ Combines object detection and OCR to build a structured `GameState` from gamepla
 
 ## Side Classification (Belonging)
 
-Units are assigned to ally (0) or enemy (1) based on vertical position:
+**With ComboDetector (recommended):** Belonging comes directly from the model's binary classification head (0=ally, 1=enemy). This is accurate even when troops cross the river. Use `create_dual_pipeline()` to get this behavior.
+
+**Legacy fallback (single CRDetector):** Units are assigned based on vertical position:
 ```
 arena_mid_y = frame_height * 0.42
 side = 0 if detection.center_y > arena_mid_y else 1  # below=ally, above=enemy
 ```
+This heuristic fails when troops cross the river.
 
-**This is a temporary heuristic.** It fails when troops cross the river (e.g., hog-rider pushing into enemy territory). KataCR's model outputs a 7th belonging column via a binary classification head, which is more accurate. Custom NMS for 7-column output is ported in `src/yolov8_custom/custom_utils.py` but unused because the current model was not trained with belonging labels. Retraining with belonging labels is a priority improvement.
+StateBuilder automatically uses model belonging when `Detection.side >= 0`, falling back to Y-position heuristic only when belonging is unavailable.
 
 ## Dependencies
 
 ```
 state_builder.py
   -> src.detection.model (CRDetector, Detection)
+  -> src.detection.combo_detector (ComboDetector) -- dual model with belonging
   -> src.ocr.text_extractor (GameTextExtractor) -- optional, PaddleOCR for timer/elixir/HP
   -> game_state (GameState, Tower, Unit, Card)
   -> src.classification.card_classifier (CardPredictor) -- EXISTS but NOT wired in yet
+```
+
+## Creating a Dual-Detector Pipeline
+
+```python
+from src.pipeline import create_dual_pipeline
+
+pipeline = create_dual_pipeline(
+    d1_path="models/dual_d1_best.pt",
+    d2_path="models/dual_d2_best.pt",
+    split_config_path="configs/split_config.json",
+    device="cuda",  # or "cpu"
+    conf=0.25,
+    imgsz=960,
+)
+
+state = pipeline.build_state(frame)
+# state.units now have accurate belonging from model output
+# state.player_towers / state.enemy_towers populated via 155-class tower names
 ```
 
 ## Card Hand Detection (NOT YET INTEGRATED)

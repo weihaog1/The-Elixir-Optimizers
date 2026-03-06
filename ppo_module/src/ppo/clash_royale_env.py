@@ -30,6 +30,7 @@ Usage:
 """
 
 import msvcrt
+import os
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -79,8 +80,13 @@ class EnvConfig:
     # Perception
     use_perception: bool = True
     detector_model_paths: list[str] = field(default_factory=lambda: [
-        "models/best_yolov8s_50epochs_fixed_pregen_set.pt",
+        "models/dual_d1_best.pt",
+        "models/dual_d2_best.pt",
     ])
+    split_config_path: str = os.path.join("configs", "split_config.json")
+    detector_conf: float = 0.25
+    detector_imgsz: int = 960
+    ocr_interval: int = 5
     card_classifier_path: str = "models/card_classifier.pt"
     card_confidence_threshold: float = 0.6  # min softmax confidence to trust card classification
 
@@ -169,6 +175,10 @@ class ClashRoyaleEnv(gymnasium.Env):
             frame_h=self._config.frame_h,
             use_perception=self._config.use_perception,
             detector_model_paths=self._config.detector_model_paths,
+            split_config_path=self._config.split_config_path,
+            detector_conf=self._config.detector_conf,
+            detector_imgsz=self._config.detector_imgsz,
+            ocr_interval=self._config.ocr_interval,
             card_classifier_path=self._config.card_classifier_path,
             dry_run=self._config.dry_run,
             card_confidence_threshold=self._config.card_confidence_threshold,
