@@ -4,9 +4,8 @@ Computes per-step rewards from observation vector deltas. Signals used:
 - Tower count changes (crown scored / crown lost)
 - Win/loss/draw terminal outcome
 - Survival bonus (small positive reward per step)
-- Graduated elixir waste penalty (mild at 8+, full at 9.5+)
+- Elixir waste penalty (at 9.5+ elixir)
 - Unit count advantage (ally vs enemy troop presence)
-- Elixir efficiency bonus (reward proportional to card cost played)
 - Defensive placement bonus (reward for placing near enemy concentrations)
 - Low-elixir noop bonus (reward for waiting when elixir is scarce)
 
@@ -17,7 +16,6 @@ Vector indices used:
     0: elixir / 10
     9: player tower count / 3
    10: enemy tower count / 3
-   19-22: card elixir costs / 10
 
 Arena channels used for unit advantage and placement rewards:
     1: CH_BELONGING  (-1=ally, +1=enemy)
@@ -42,10 +40,7 @@ class RewardConfig:
     survival_bonus: float = 0.02
     elixir_waste_penalty: float = -0.1  # full penalty at max elixir
     elixir_waste_threshold: float = 0.95  # 9.5/10 elixir
-    elixir_high_penalty: float = -0.02  # mild penalty at 8+ elixir
-    elixir_high_threshold: float = 0.8  # 8/10 elixir
     unit_advantage_weight: float = 0.03  # model belonging from ComboDetector
-    elixir_spent_bonus: float = 0.005  # per elixir cost of card played
     defensive_placement_bonus: float = 0.05  # model belonging from ComboDetector
     defensive_col_radius: int = 3  # columns within enemy center to earn bonus
     low_elixir_noop_bonus: float = 0.01  # for choosing noop when elixir < threshold
@@ -69,8 +64,6 @@ class RewardComputer:
     _ELIXIR_IDX = 0
     _ALLY_TOWER_COUNT_IDX = 9
     _ENEMY_TOWER_COUNT_IDX = 10
-    _CARD_COST_START_IDX = 19  # vector[19:23] = card elixir costs / 10
-
     # Action space layout
     _GRID_CELLS = 576  # 32 rows * 18 cols
     _GRID_COLS = 18
@@ -175,8 +168,6 @@ class RewardComputer:
         curr_elixir = float(curr_vec[self._ELIXIR_IDX])
         if curr_elixir >= cfg.elixir_waste_threshold:
             reward += cfg.elixir_waste_penalty  # full penalty at 9.5+
-        elif curr_elixir >= cfg.elixir_high_threshold:
-            reward += cfg.elixir_high_penalty  # mild penalty at 8.0+
 
         # --- Unit count advantage (from arena grid) ---
         arena = None
@@ -211,14 +202,6 @@ class RewardComputer:
                 card_id = action // self._GRID_CELLS
                 cell = action % self._GRID_CELLS
                 placement_col = cell % self._GRID_COLS
-
-                # Elixir efficiency: reward proportional to card cost
-                if 0 <= card_id < 4:
-                    card_cost_norm = float(
-                        curr_vec[self._CARD_COST_START_IDX + card_id]
-                    )
-                    card_cost = card_cost_norm * 10.0  # denormalize
-                    reward += cfg.elixir_spent_bonus * card_cost
 
                 # Defensive placement: bonus for placing near enemy units
                 if enemy_cols:
