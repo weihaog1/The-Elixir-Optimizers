@@ -56,6 +56,7 @@ for _name, _subdir in [
     ("src.data", os.path.join(_main_src, "data")),
     ("src.pipeline", os.path.join(_main_src, "pipeline")),
     ("src.ocr", os.path.join(_main_src, "ocr")),
+    ("src.yolov8_custom", os.path.join(_main_src, "yolov8_custom")),
 ]:
     _pkg = _types.ModuleType(_name)
     _pkg.__path__ = [_subdir]
@@ -95,27 +96,38 @@ def find_session_dirs(recordings_dir: str) -> list[str]:
     return sessions
 
 
-def create_state_builder(detector_model=None, card_classifier_model=None):
-    """Create EnhancedStateBuilder with perception pipeline if available.
+def create_state_builder(d1_model=None, d2_model=None, split_config=None,
+                         card_classifier_model=None):
+    """Create EnhancedStateBuilder with dual ComboDetector pipeline.
 
     Args:
-        detector_model: Path to YOLO detection model, or None for default.
+        d1_model: Path to detector 1 (small sprites), or None for default.
+        d2_model: Path to detector 2 (large sprites), or None for default.
+        split_config: Path to split_config.json, or None for default.
         card_classifier_model: Path to card classifier model, or None for default.
 
     Returns None if the perception modules are not installed.
     """
     try:
-        from src.pipeline.state_builder import StateBuilder
+        from src.pipeline.state_builder import create_dual_pipeline
         from src.classification.card_classifier import CardPredictor
         from src.dataset.card_integration import EnhancedStateBuilder
 
         # Resolve model paths relative to project root
-        if detector_model is None:
-            detector_model = os.path.join(
-                PROJECT_ROOT, "models", "best_yolov8s_50epochs_fixed_pregen_set.pt"
-            )
-        elif not os.path.isabs(detector_model):
-            detector_model = os.path.join(PROJECT_ROOT, detector_model)
+        if d1_model is None:
+            d1_model = os.path.join(PROJECT_ROOT, "models", "dual_d1_best.pt")
+        elif not os.path.isabs(d1_model):
+            d1_model = os.path.join(PROJECT_ROOT, d1_model)
+
+        if d2_model is None:
+            d2_model = os.path.join(PROJECT_ROOT, "models", "dual_d2_best.pt")
+        elif not os.path.isabs(d2_model):
+            d2_model = os.path.join(PROJECT_ROOT, d2_model)
+
+        if split_config is None:
+            split_config = os.path.join(PROJECT_ROOT, "configs", "split_config.json")
+        elif not os.path.isabs(split_config):
+            split_config = os.path.join(PROJECT_ROOT, split_config)
 
         if card_classifier_model is None:
             card_classifier_model = os.path.join(
@@ -124,15 +136,20 @@ def create_state_builder(detector_model=None, card_classifier_model=None):
         elif not os.path.isabs(card_classifier_model):
             card_classifier_model = os.path.join(PROJECT_ROOT, card_classifier_model)
 
-        if not os.path.exists(detector_model):
-            print(f"Detection model not found: {detector_model}")
-            print("Running without perception pipeline (zero-filled observations)")
-            return None
+        # Check that both detector models exist
+        for path, label in [(d1_model, "D1"), (d2_model, "D2")]:
+            if not os.path.exists(path):
+                print(f"Detection model not found ({label}): {path}")
+                print("Running without perception pipeline (zero-filled observations)")
+                return None
 
-        state_builder = StateBuilder(
-            detection_model_path=detector_model,
-            enable_ocr=False,
+        state_builder = create_dual_pipeline(
+            d1_path=d1_model,
+            d2_path=d2_model,
+            split_config_path=split_config,
+            enable_ocr=True,
         )
+        print(f"[Perception] Loaded dual ComboDetector: D1={d1_model}, D2={d2_model}")
 
         card_predictor = None
         if os.path.exists(card_classifier_model):
@@ -142,7 +159,6 @@ def create_state_builder(detector_model=None, card_classifier_model=None):
             print(f"Card classifier not found: {card_classifier_model}")
             print("Running without card classification")
 
-        print(f"[Perception] Loaded detector: {detector_model}")
         return EnhancedStateBuilder(state_builder, card_predictor)
 
     except ImportError as e:
@@ -179,10 +195,22 @@ def main():
         help="Skip sessions that already have an output .npz file",
     )
     parser.add_argument(
-        "--detector-model",
+        "--d1-model",
         type=str,
         default=None,
-        help="Path to YOLO detection model (default: models/best_yolov8s_50epochs_fixed_pregen_set.pt)",
+        help="Path to D1 detector (small sprites). Default: models/dual_d1_best.pt",
+    )
+    parser.add_argument(
+        "--d2-model",
+        type=str,
+        default=None,
+        help="Path to D2 detector (large sprites). Default: models/dual_d2_best.pt",
+    )
+    parser.add_argument(
+        "--split-config",
+        type=str,
+        default=None,
+        help="Path to split_config.json. Default: configs/split_config.json",
     )
     parser.add_argument(
         "--card-classifier",
@@ -232,7 +260,9 @@ def main():
 
     # Create state builder (may be None if perception pipeline unavailable)
     state_builder = create_state_builder(
-        detector_model=args.detector_model,
+        d1_model=args.d1_model,
+        d2_model=args.d2_model,
+        split_config=args.split_config,
         card_classifier_model=args.card_classifier,
     )
 
