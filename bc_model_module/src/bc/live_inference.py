@@ -612,13 +612,20 @@ class PerceptionAdapter:
         vector = np.zeros((1, _NUM_VECTOR_FEATURES), dtype=np.float32)
 
         # Read elixir via OCR (every N frames, cache between runs)
-        if self._ocr is not None and self._frame_count % self._config.ocr_interval == 0:
+        # Also run on first frame (frame_count == 1) so we don't start stale
+        if self._ocr is not None and (
+            self._frame_count == 1
+            or self._frame_count % self._config.ocr_interval == 0
+        ):
             try:
                 ocr_results = self._ocr.extract_game_text(frame)
                 if ocr_results.elixir is not None:
                     self._ocr_elixir_cache = ocr_results.elixir
-            except Exception:
-                pass  # keep cached value
+                elif self._config.verbose and self._frame_count <= 5:
+                    print(f"[Perception] OCR returned no elixir on frame {self._frame_count}")
+            except Exception as e:
+                if self._config.verbose:
+                    print(f"[Perception] OCR error on frame {self._frame_count}: {e}")
         current_elixir = self._ocr_elixir_cache
 
         vector[0, 0] = current_elixir / self._max_elixir

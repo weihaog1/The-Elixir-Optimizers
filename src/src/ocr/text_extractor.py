@@ -227,7 +227,7 @@ class GameTextExtractor(TextExtractor):
         # These should be calibrated for actual screenshots
         self.default_regions = {
             "timer": (400, 5, 535, 45),
-            "elixir": (125, 912, 175, 948),
+            "elixir": (110, 905, 190, 955),
             # HP regions are approximate - need calibration
             "player_king_hp": (240, 695, 300, 720),
             "player_left_princess_hp": (85, 615, 145, 635),
@@ -395,7 +395,10 @@ class GameTextExtractor(TextExtractor):
             elixir_region = regions.get("elixir")
             if elixir_region:
                 elixir_crop = img[elixir_region[1]:elixir_region[3], elixir_region[0]:elixir_region[2]]
-                elixir_prep = self.preprocess_for_ocr(elixir_crop, enhance_contrast=True)
+                # White text on dark purple — threshold + invert for best OCR
+                elixir_prep = self.preprocess_for_ocr(
+                    elixir_crop, enhance_contrast=True, threshold=True, invert=True,
+                )
                 elixir_ocr = self.extract_text(elixir_prep)
                 for ocr_result in elixir_ocr:
                     elixir = self.parse_elixir(ocr_result.text)

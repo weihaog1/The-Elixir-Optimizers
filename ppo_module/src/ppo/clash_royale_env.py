@@ -583,7 +583,7 @@ class ClashRoyaleEnv(gymnasium.Env):
         }
 
         if self._config.verbose:
-            print(f"[Env] Game started. Initial cards: {card_names}")
+            print(f"[Env] Game started. Initial cards: {card_names}, elixir={self._last_elixir}")
             print(f"[Env] Initial mask: {int(self._current_mask.sum())} valid "
                   f"actions ({valid_card_actions} card placements)")
 
