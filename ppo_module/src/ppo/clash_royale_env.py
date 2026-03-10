@@ -789,6 +789,14 @@ class ClashRoyaleEnv(gymnasium.Env):
                 self._raw_prev_obs, curr_raw_obs,
                 terminal_outcome=outcome, action=action,
             )
+        # Log defensive placement bonus details
+        if self._config.verbose and self._reward_computer._last_defensive_detail:
+            bonus = self._reward_computer._last_defensive_bonus
+            detail = self._reward_computer._last_defensive_detail
+            total = self._reward_computer._total_defensive_bonuses
+            tag = "DEFENSE BONUS" if bonus > 0 else "DEFENSE MISS"
+            print(f"[Env] Step {self._step_count}: [{tag}] {detail} (total bonuses: {total})")
+
         # Add manual crown reward (non-zero only when operator manually stopped)
         reward += manual_crown_reward
         self._episode_reward += reward

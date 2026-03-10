@@ -41,8 +41,8 @@ class RewardConfig:
     elixir_waste_penalty: float = -0.1  # full penalty at max elixir
     elixir_waste_threshold: float = 0.95  # 9.5/10 elixir
     unit_advantage_weight: float = 0.03  # model belonging from ComboDetector
-    defensive_placement_bonus: float = 0.05  # model belonging from ComboDetector
-    defensive_col_radius: int = 3  # columns within enemy center to earn bonus
+    defensive_placement_bonus: float = 0.15  # bonus for placing near enemy units on player's half
+    defensive_proximity_radius: float = 4.0  # max Euclidean distance to closest enemy for bonus
     low_elixir_noop_bonus: float = 0.01  # for choosing noop when elixir < threshold
     low_elixir_noop_threshold: float = 0.5  # 5/10 elixir
     reward_clamp: float = 15.0  # Per-step non-terminal reward ceiling
@@ -68,18 +68,24 @@ class RewardComputer:
     _GRID_CELLS = 576  # 32 rows * 18 cols
     _GRID_COLS = 18
     _NOOP_ACTION = 2304
+    _PLAYER_HALF_ROW_START = 17  # rows 17-31 are player's half
 
     def __init__(self, config: Optional[RewardConfig] = None) -> None:
         self.config = config or RewardConfig()
         self._prev_ally_towers: Optional[float] = None
         self._prev_enemy_towers: Optional[float] = None
         self.new_game_detected: bool = False
+        self._last_defensive_bonus: float = 0.0
+        self._last_defensive_detail: str = ""
+        self._total_defensive_bonuses: int = 0
 
     def reset(self) -> None:
         """Reset state for a new episode."""
         self._prev_ally_towers = None
         self._prev_enemy_towers = None
         self.new_game_detected = False
+        self._last_defensive_bonus = 0.0
+        self._last_defensive_detail = ""
 
     def _detect_new_game_anomaly(
         self,
@@ -128,6 +134,8 @@ class RewardComputer:
         reward = 0.0
         cfg = self.config
         self.new_game_detected = False
+        self._last_defensive_bonus = 0.0
+        self._last_defensive_detail = ""
 
         # --- Crown rewards (tower count changes) ---
         curr_enemy_towers = float(curr_vec[self._ENEMY_TOWER_COUNT_IDX])
@@ -171,7 +179,7 @@ class RewardComputer:
 
         # --- Unit count advantage (from arena grid) ---
         arena = None
-        enemy_cols: list[int] = []
+        enemy_positions = np.empty((0, 2), dtype=np.intp)
         if "arena" in curr_obs:
             arena = curr_obs["arena"]
             if arena.ndim == 4:
@@ -184,10 +192,9 @@ class RewardComputer:
             advantage = ally_units - enemy_units
             reward += cfg.unit_advantage_weight * advantage
 
-            # Collect enemy unit column positions for placement reward
+            # Collect enemy unit positions (row, col) for placement reward
             enemy_occupied = occupied & (belonging > 0)
-            enemy_rows, enemy_col_arr = np.where(enemy_occupied)
-            enemy_cols = enemy_col_arr.tolist()
+            enemy_positions = np.argwhere(enemy_occupied)  # (N, 2) of [row, col]
 
         # --- Action-aware reward shaping ---
         if action is not None:
@@ -198,17 +205,47 @@ class RewardComputer:
                 if curr_elixir < cfg.low_elixir_noop_threshold:
                     reward += cfg.low_elixir_noop_bonus
             else:
-                # Decode action: card_id and placement column
+                # Decode action: card_id, placement row and column
                 card_id = action // self._GRID_CELLS
                 cell = action % self._GRID_CELLS
+                placement_row = cell // self._GRID_COLS
                 placement_col = cell % self._GRID_COLS
 
                 # Defensive placement: bonus for placing near enemy units
-                if enemy_cols:
-                    avg_enemy_col = sum(enemy_cols) / len(enemy_cols)
-                    col_dist = abs(placement_col - avg_enemy_col)
-                    if col_dist <= cfg.defensive_col_radius:
-                        reward += cfg.defensive_placement_bonus
+                # on the player's half of the arena (rows 17-31)
+                if len(enemy_positions) > 0:
+                    if placement_row >= self._PLAYER_HALF_ROW_START:
+                        placement_pos = np.array([placement_row, placement_col])
+                        distances = np.linalg.norm(
+                            enemy_positions - placement_pos, axis=1,
+                        )
+                        min_dist = float(distances.min())
+                        closest_enemy = enemy_positions[distances.argmin()]
+                        if min_dist <= cfg.defensive_proximity_radius:
+                            proximity_scale = 1.0 - (min_dist / cfg.defensive_proximity_radius)
+                            bonus = cfg.defensive_placement_bonus * proximity_scale
+                            reward += bonus
+                            self._total_defensive_bonuses += 1
+                            self._last_defensive_bonus = bonus
+                            self._last_defensive_detail = (
+                                f"row={placement_row} col={placement_col} "
+                                f"closest_enemy=({closest_enemy[0]},{closest_enemy[1]}) "
+                                f"dist={min_dist:.1f} bonus={bonus:.3f} "
+                                f"n_enemies={len(enemy_positions)}"
+                            )
+                        else:
+                            self._last_defensive_detail = (
+                                f"NO BONUS: row={placement_row} col={placement_col} "
+                                f"closest_enemy=({closest_enemy[0]},{closest_enemy[1]}) "
+                                f"dist={min_dist:.1f} > radius={cfg.defensive_proximity_radius} "
+                                f"n_enemies={len(enemy_positions)}"
+                            )
+                    else:
+                        self._last_defensive_detail = (
+                            f"NO BONUS (enemy half): row={placement_row} col={placement_col} "
+                            f"< player_half={self._PLAYER_HALF_ROW_START} "
+                            f"n_enemies={len(enemy_positions)}"
+                        )
 
         # --- Clamp non-terminal reward ---
         reward = max(-cfg.reward_clamp, min(cfg.reward_clamp, reward))
