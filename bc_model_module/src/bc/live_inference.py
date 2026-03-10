@@ -315,6 +315,7 @@ class PerceptionAdapter:
         self._num_classes: int = 155
         self._deck_card_to_idx: Optional[dict] = None
         self._card_elixir_cost: Optional[dict] = None
+        self._card_is_spell: dict = {}
         self._num_deck_cards: int = 8
         self._max_elixir: int = 10
 
@@ -389,6 +390,7 @@ class PerceptionAdapter:
                 UNIT_TYPE_MAP,
                 DECK_CARD_TO_IDX,
                 CARD_ELIXIR_COST,
+                CARD_IS_SPELL,
                 NUM_DECK_CARDS,
                 MAX_ELIXIR,
             )
@@ -397,6 +399,7 @@ class PerceptionAdapter:
             self._unit_type_map = UNIT_TYPE_MAP
             self._deck_card_to_idx = DECK_CARD_TO_IDX
             self._card_elixir_cost = CARD_ELIXIR_COST
+            self._card_is_spell = CARD_IS_SPELL
             self._num_deck_cards = NUM_DECK_CARDS
             self._max_elixir = MAX_ELIXIR
             print(f"[Perception] Loaded class mappings: {NUM_CLASSES} classes")
@@ -673,9 +676,33 @@ class PerceptionAdapter:
             if current_elixir < cost + 1:
                 continue
             base = i * _GRID_CELLS
-            for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
-                row_start = base + row * _GRID_COLS
-                mask[row_start:row_start + _GRID_COLS] = True
+            is_spell = self._card_is_spell.get(card_name, False)
+
+            if is_spell:
+                # Spells: only allow placement near enemy units (2-cell radius)
+                enemy_cells = (arena[0, :, :, 2] > 0.5) & (arena[0, :, :, 1] > 0)
+                enemy_pos = np.argwhere(enemy_cells)
+                if len(enemy_pos) > 0:
+                    spell_radius = 2
+                    valid_cells = set()
+                    for er, ec in enemy_pos:
+                        for dr in range(-spell_radius, spell_radius + 1):
+                            for dc in range(-spell_radius, spell_radius + 1):
+                                r, c = er + dr, ec + dc
+                                if _DEPLOY_ROW_START <= r < _GRID_ROWS and 0 <= c < _GRID_COLS:
+                                    valid_cells.add((r, c))
+                    for r, c in valid_cells:
+                        mask[base + r * _GRID_COLS + c] = True
+                else:
+                    # No enemies detected — fallback to full deployment zone
+                    for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
+                        row_start = base + row * _GRID_COLS
+                        mask[row_start:row_start + _GRID_COLS] = True
+            else:
+                # Troops: unmask all deployable cells
+                for row in range(_DEPLOY_ROW_START, _GRID_ROWS):
+                    row_start = base + row * _GRID_COLS
+                    mask[row_start:row_start + _GRID_COLS] = True
 
         # Periodic mask/elixir diagnostic (every 10 frames)
         if self._config.verbose and self._frame_count % 10 == 0:
