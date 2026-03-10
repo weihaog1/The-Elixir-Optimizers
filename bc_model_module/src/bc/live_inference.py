@@ -433,7 +433,7 @@ class PerceptionAdapter:
         """Attempt to load PaddleOCR-based elixir reader."""
         try:
             from src.ocr.text_extractor import GameTextExtractor
-            self._ocr = GameTextExtractor()
+            self._ocr = GameTextExtractor(engine="easy")
             print("[Perception] OCR enabled for elixir reading")
         except Exception as e:
             print(f"[Perception] OCR not available: {e}")
