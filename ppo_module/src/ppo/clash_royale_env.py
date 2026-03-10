@@ -504,7 +504,10 @@ class ClashRoyaleEnv(gymnasium.Env):
         # Skip on the very first episode (step_count == 0 means no game played yet)
         if self._config.pause_between_episodes and self._step_count > 0:
             print("\n[Env] Episode ended. Queue the next match, then press Enter to continue...")
-            input()
+            try:
+                input()
+            except EOFError:
+                pass  # SB3 auto-reset — no interactive stdin available
 
         # Reset episode state
         self._reward_computer.reset()

@@ -186,7 +186,7 @@ def main():
     parser.add_argument(
         "--noop-ratio",
         type=float,
-        default=0.15,
+        default=0.40,
         help="Fraction of no-op frames to keep (0-1, default: 0.15)",
     )
     parser.add_argument(

@@ -91,7 +91,9 @@ class DatasetBuilder:
         obs_arenas = []
         obs_vectors = []
         masks = []
-        for frame_info in frames:
+        for frame_idx, frame_info in enumerate(frames):
+            if frame_idx % 50 == 0:
+                print(f"  Frame {frame_idx}/{len(frames)}...")
             img_path = os.path.join(
                 session_dir, "screenshots", frame_info["filename"]
             )
@@ -152,8 +154,12 @@ class DatasetBuilder:
             List of DatasetStats, one per session.
         """
         stats = []
-        for session_dir in session_dirs:
+        for i, session_dir in enumerate(session_dirs, 1):
+            session_name = os.path.basename(session_dir.rstrip("/"))
+            print(f"\n[{i}/{len(session_dirs)}] {session_name}")
             s = self.build_dataset(session_dir, output_dir, noop_keep_ratio)
+            print(f"  -> {s.kept_after_downsample} frames kept "
+                  f"({s.action_frames} actions, {s.noop_frames} no-ops)")
             stats.append(s)
         return stats
 
