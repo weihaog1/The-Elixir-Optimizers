@@ -44,7 +44,7 @@ class RewardConfig:
     defensive_placement_bonus: float = 0.15  # bonus for placing near enemy units on player's half
     defensive_proximity_radius: float = 4.0  # max Euclidean distance to closest enemy for bonus
     low_elixir_noop_bonus: float = 0.01  # for choosing noop when elixir < threshold
-    low_elixir_noop_threshold: float = 0.5  # 5/10 elixir
+    low_elixir_noop_threshold: float = 0.3  # 3/10 elixir
     reward_clamp: float = 15.0  # Per-step non-terminal reward ceiling
     reward_scale: float = 0.1  # Scale all rewards for value fn stability
     tower_jump_threshold: float = 0.15  # Tower increase > this = new game anomaly

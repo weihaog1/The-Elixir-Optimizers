@@ -673,7 +673,7 @@ class PerceptionAdapter:
             cost = 0
             if self._card_elixir_cost is not None:
                 cost = self._card_elixir_cost.get(card_name, 0)
-            if current_elixir < cost + 1:
+            if current_elixir < cost:
                 continue
             base = i * _GRID_CELLS
             is_spell = self._card_is_spell.get(card_name, False)
