@@ -86,7 +86,7 @@ class EnvConfig:
     split_config_path: str = os.path.join("configs", "split_config.json")
     detector_conf: float = 0.25
     detector_imgsz: int = 960
-    ocr_interval: int = 5
+    ocr_interval: int = 1
     card_classifier_path: str = "models/card_classifier.pt"
     card_confidence_threshold: float = 0.6  # min softmax confidence to trust card classification
 

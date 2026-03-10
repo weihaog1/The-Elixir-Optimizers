@@ -227,7 +227,7 @@ class GameTextExtractor(TextExtractor):
         # These should be calibrated for actual screenshots
         self.default_regions = {
             "timer": (400, 5, 535, 45),
-            "elixir": (148, 918, 173, 944),
+            "elixir": (140, 913, 180, 949),
             # HP regions are approximate - need calibration
             "player_king_hp": (240, 695, 300, 720),
             "player_left_princess_hp": (85, 615, 145, 635),

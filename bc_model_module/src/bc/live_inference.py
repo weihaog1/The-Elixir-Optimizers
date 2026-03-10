@@ -86,7 +86,7 @@ class LiveConfig:
     split_config_path: str = os.path.join("configs", "split_config.json")
     detector_conf: float = 0.25
     detector_imgsz: int = 960
-    ocr_interval: int = 5  # run OCR every N frames to amortize cost
+    ocr_interval: int = 1  # run OCR every frame for accurate elixir
     card_classifier_path: str = os.path.join("models", "card_classifier.pt")
     card_confidence_threshold: float = 0.6  # min softmax confidence to trust a card classification
 
