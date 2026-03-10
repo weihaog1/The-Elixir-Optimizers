@@ -268,9 +268,14 @@ class PPOTrainer:
                 )
             except KeyboardInterrupt:
                 print("\n[PPOTrainer] Training interrupted by user.")
+                # Save before exiting — Ctrl+C during learn() means
+                # the post-rollout save below was never reached.
+                latest_path = os.path.join(cfg.output_dir, "latest_ppo")
+                self._model.save(latest_path)
+                print(f"[PPOTrainer] Saved interrupted checkpoint: {latest_path}.zip")
                 break
 
-            # Save checkpoint
+            # Save checkpoint after each completed rollout
             latest_path = os.path.join(cfg.output_dir, "latest_ppo")
             self._model.save(latest_path)
 

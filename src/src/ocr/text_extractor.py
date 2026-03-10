@@ -400,13 +400,26 @@ class GameTextExtractor(TextExtractor):
                     elixir_crop, enhance_contrast=True, threshold=True, invert=True,
                 )
                 elixir_ocr = self.extract_text(elixir_prep)
+                # Debug: show what OCR found on first few calls
+                if not hasattr(self, '_elixir_debug_count'):
+                    self._elixir_debug_count = 0
+                self._elixir_debug_count += 1
+                if self._elixir_debug_count <= 5:
+                    raw_texts = [r.text for r in elixir_ocr]
+                    print(f"[OCR Debug] elixir region={elixir_region}, "
+                          f"crop shape={elixir_crop.shape}, "
+                          f"raw OCR texts={raw_texts}")
                 for ocr_result in elixir_ocr:
                     elixir = self.parse_elixir(ocr_result.text)
                     if elixir is not None:
                         results.elixir = elixir
                         break
         except Exception as e:
-            pass
+            if not hasattr(self, '_elixir_debug_count'):
+                self._elixir_debug_count = 0
+            self._elixir_debug_count += 1
+            if self._elixir_debug_count <= 5:
+                print(f"[OCR Debug] elixir extraction error: {e}")
 
         # Extract HP values
         hp_fields = [
