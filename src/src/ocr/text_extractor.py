@@ -395,11 +395,31 @@ class GameTextExtractor(TextExtractor):
             elixir_region = regions.get("elixir")
             if elixir_region:
                 elixir_crop = img[elixir_region[1]:elixir_region[3], elixir_region[0]:elixir_region[2]]
-                # White text on dark purple — threshold + invert for best OCR
-                elixir_prep = self.preprocess_for_ocr(
-                    elixir_crop, enhance_contrast=True, threshold=True, invert=True,
-                )
-                elixir_ocr = self.extract_text(elixir_prep)
+
+                # Upscale small crop 3x for better OCR detection
+                h, w = elixir_crop.shape[:2]
+                elixir_crop = cv2.resize(elixir_crop, (w * 3, h * 3), interpolation=cv2.INTER_CUBIC)
+
+                # EasyOCR works better with just contrast enhancement (no threshold/invert)
+                if self.engine_type == "easy":
+                    elixir_prep = self.preprocess_for_ocr(
+                        elixir_crop, enhance_contrast=True, threshold=False, invert=False,
+                    )
+                    # Use digit-only allowlist and lower thresholds for small text
+                    elixir_ocr_raw = self.engine.readtext(
+                        elixir_prep, allowlist='0123456789',
+                        text_threshold=0.3, low_text=0.3,
+                    )
+                    elixir_ocr = [
+                        OCRResult(text=item[1], confidence=item[2])
+                        for item in elixir_ocr_raw
+                    ]
+                else:
+                    elixir_prep = self.preprocess_for_ocr(
+                        elixir_crop, enhance_contrast=True, threshold=True, invert=True,
+                    )
+                    elixir_ocr = self.extract_text(elixir_prep)
+
                 # Debug: show what OCR found on first few calls
                 if not hasattr(self, '_elixir_debug_count'):
                     self._elixir_debug_count = 0
