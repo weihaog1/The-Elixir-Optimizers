@@ -680,7 +680,9 @@ class PerceptionAdapter:
 
             if is_spell:
                 # Spells: only allow placement near enemy units (2-cell radius)
-                enemy_cells = (arena[0, :, :, 2] > 0.5) & (arena[0, :, :, 1] > 0)
+                enemy_troops = (arena[0, :, :, 2] > 0.5) & (arena[0, :, :, 1] > 0)
+                enemy_towers = arena[0, :, :, 4] > 0  # CH_ENEMY_TOWER_HP
+                enemy_cells = enemy_troops | enemy_towers
                 enemy_pos = np.argwhere(enemy_cells)
                 if len(enemy_pos) > 0:
                     spell_radius = 5
