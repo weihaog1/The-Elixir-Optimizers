@@ -683,7 +683,7 @@ class PerceptionAdapter:
                 enemy_cells = (arena[0, :, :, 2] > 0.5) & (arena[0, :, :, 1] > 0)
                 enemy_pos = np.argwhere(enemy_cells)
                 if len(enemy_pos) > 0:
-                    spell_radius = 2
+                    spell_radius = 5
                     valid_cells = set()
                     for er, ec in enemy_pos:
                         for dr in range(-spell_radius, spell_radius + 1):
