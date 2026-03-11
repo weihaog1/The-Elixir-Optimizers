@@ -16,10 +16,9 @@ docs/images/.jekyll-cache/
 # Logs
 *.log
 
-# Object detection - data and models
+# Object detection - data and runs
 object-detection/data/
 object-detection/runs/
-**/*.pt
 
 # Python
 __pycache__/

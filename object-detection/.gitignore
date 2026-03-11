@@ -1,0 +1,43 @@
+# Dataset (too large - download separately)
+data/
+
+# Training runs (large model checkpoints)
+runs/
+
+# Pre-trained base weights (download from ultralytics)
+yolov8n.pt
+yolov8s.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ralph AI assistant logs
+.ralph/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment
+.env
+.venv/
+venv/
+ENV/

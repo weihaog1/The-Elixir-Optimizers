@@ -49,6 +49,9 @@ class CRDataset(YOLODataset):
     def __init__(self, *args, data=None, task="detect", **kwargs):
         self.img_path = None
         self.use_belonging = kwargs.pop('use_belonging', False)
+        # Dual-detector class filtering (optional, for on-the-fly generation)
+        self.class_filter = kwargs.pop('class_filter', None)  # set of global indices
+        self.global_to_local = kwargs.pop('global_to_local', None)  # {str(global): local}
         if kwargs['img_path'] is not None:  # validation - load from disk
             kwargs.pop('seed', None)
             kwargs.pop('unit_nums', None)
@@ -245,15 +248,28 @@ class CRDataset(YOLODataset):
         self.generator.add_unit(self.unit_nums)
         img, box, _ = self.generator.build(box_format='cxcywh', img_size=IMG_SIZE)
         # box: (N, 6) - cx, cy, w, h, belonging, cls_id (normalized)
+
+        # Dual-detector class filtering: keep only classes in this detector
+        if self.class_filter is not None and self.global_to_local is not None:
+            mask = np.array([int(b[5]) in self.class_filter for b in box])
+            box = box[mask]
+
         bboxes = box[:, :4]
 
         if self.use_belonging:
             # 2-column cls: (class_id, belonging)
             belonging = box[:, 4]
-            cls_ids = np.array(
-                [self.name_inv[idx2unit[int(i)]] for i in box[:, 5]],
-                dtype=np.float32,
-            )
+            if self.global_to_local is not None:
+                # Remap global generator index -> local detector index
+                cls_ids = np.array(
+                    [self.global_to_local[str(int(i))] for i in box[:, 5]],
+                    dtype=np.float32,
+                )
+            else:
+                cls_ids = np.array(
+                    [self.name_inv[idx2unit[int(i)]] for i in box[:, 5]],
+                    dtype=np.float32,
+                )
             cls = np.stack([cls_ids, belonging], axis=1).astype(np.float32)
         else:
             # 1-column cls: class_id only

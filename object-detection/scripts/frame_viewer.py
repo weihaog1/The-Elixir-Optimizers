@@ -87,9 +87,21 @@ def draw_detections(display, dets, names, scale):
     return len(dets)
 
 
-def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960):
-    model = YOLO(model_path)
-    nc = model.model.model[-1].nc
+def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
+        combo_models=None, split_config=None):
+    # Combo mode: dual-detector inference
+    combo_detector = None
+    if combo_models and split_config:
+        from src.detection.combo_detector import ComboDetector
+        combo_detector = ComboDetector(
+            model_paths=combo_models, split_config_path=split_config,
+            conf=conf, iou=iou, device=device, imgsz=imgsz,
+        )
+        model = None
+        nc = None
+    else:
+        model = YOLO(model_path)
+        nc = model.model.model[-1].nc
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -102,7 +114,10 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960):
     vid_fps = cap.get(cv2.CAP_PROP_FPS) or 30
 
     print(f"Video: {frame_width}x{frame_height} @ {vid_fps:.0f}fps, {total_frames} frames")
-    print(f"Model: {model_path} (nc={nc}) on {device}, imgsz={imgsz}, conf={conf}")
+    if combo_detector:
+        print(f"Combo detector: {combo_models[0]} + {combo_models[1]}")
+    else:
+        print(f"Model: {model_path} (nc={nc}) on {device}, imgsz={imgsz}, conf={conf}")
     print(f"Belonging from model output (0=ally/orange, 1=enemy/red)")
     print(f"Controls: [left/right] navigate, [1-9] set skip, [q] quit")
 
@@ -111,7 +126,10 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960):
     if not ret:
         return
     print("Warming up model...")
-    model.predict(frame, conf=conf, iou=iou, device=device, verbose=False, imgsz=imgsz)
+    if combo_detector:
+        combo_detector.warmup()
+    else:
+        model.predict(frame, conf=conf, iou=iou, device=device, verbose=False, imgsz=imgsz)
     print("Ready.")
 
     frame_num = 0
@@ -120,43 +138,38 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960):
     ret, frame = cap.read()
 
     while True:
-        arena_frame = frame[:ARENA_CUTOFF_Y, :]
-
-        # Use ultralytics preprocessing + custom NMS for belonging
-        results = model.predict(
-            arena_frame, conf=conf, iou=iou, device=device,
-            verbose=False, imgsz=imgsz,
-        )
-        # Get raw predictions by running forward pass again through the model
-        # Use the preprocessed image from ultralytics
-        preprocessed = results[0].speed  # just to trigger processing
-        # Actually, we need raw preds. Use model() directly with proper preprocessing.
-        from ultralytics.data.augment import LetterBox
-        letterbox = LetterBox(new_shape=(imgsz, imgsz), auto=False, stride=32)
-        img = letterbox(image=arena_frame)
-        img = img.transpose(2, 0, 1)[::-1].copy()  # HWC->CHW, BGR->RGB
-        img = torch.from_numpy(img).unsqueeze(0).float() / 255.0
-        img = img.to(next(model.model.parameters()).device)
-
-        with torch.no_grad():
-            preds = model.model(img)
-
-        dets = non_max_suppression(
-            preds, conf_thres=conf, iou_thres=iou, nc=nc,
-        )[0]
-
-        # Scale detections back from letterboxed coords to original arena frame
-        if len(dets) > 0:
-            from ultralytics.utils.ops import scale_boxes
-            dets_scaled = dets.clone()
-            dets_scaled[:, :4] = scale_boxes(
-                img.shape[2:], dets[:, :4], arena_frame.shape[:2]
-            )
-            dets = dets_scaled.cpu().numpy()
+        if combo_detector:
+            # ComboDetector handles arena cropping internally
+            dets = combo_detector.infer(frame, arena_cutoff=ARENA_CUTOFF_Y)
+            names = combo_detector.names
         else:
-            dets = np.zeros((0, 7))
+            arena_frame = frame[:ARENA_CUTOFF_Y, :]
 
-        names = results[0].names
+            from ultralytics.data.augment import LetterBox
+            letterbox = LetterBox(new_shape=(imgsz, imgsz), auto=True, stride=32)
+            img = letterbox(image=arena_frame)
+            img = img.transpose(2, 0, 1)[::-1].copy()  # HWC->CHW, BGR->RGB
+            img = torch.from_numpy(img).unsqueeze(0).float() / 255.0
+            img = img.to(next(model.model.parameters()).device)
+
+            with torch.no_grad():
+                preds = model.model(img)
+
+            dets = non_max_suppression(
+                preds, conf_thres=conf, iou_thres=iou, nc=nc,
+            )[0]
+
+            if len(dets) > 0:
+                from ultralytics.utils.ops import scale_boxes
+                dets_scaled = dets.clone()
+                dets_scaled[:, :4] = scale_boxes(
+                    img.shape[2:], dets[:, :4], arena_frame.shape[:2]
+                )
+                dets = dets_scaled.cpu().numpy()
+            else:
+                dets = np.zeros((0, 7))
+
+            names = model.model.names
 
         # Scale for display
         display_h = 900
@@ -175,7 +188,8 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960):
         n_dets = draw_detections(display, dets, names, scale)
 
         # HUD
-        hud = f"Frame {frame_num}/{total_frames} | Skip: {skip} | {n_dets} dets"
+        mode_label = "COMBO" if combo_detector else "SINGLE"
+        hud = f"Frame {frame_num}/{total_frames} | Skip: {skip} | {n_dets} dets | {mode_label}"
         cv2.putText(
             display, hud, (10, 25),
             cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2,
@@ -215,6 +229,11 @@ if __name__ == "__main__":
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--imgsz", type=int, default=960)
+    parser.add_argument("--combo", nargs=2, metavar=("D1_MODEL", "D2_MODEL"),
+                        help="Dual-detector combo mode: two model paths")
+    parser.add_argument("--split-config", default="configs/split_config.json",
+                        help="Path to split_config.json for combo mode")
     args = parser.parse_args()
 
-    run(args.video, args.model, args.device, args.conf, args.iou, args.imgsz)
+    run(args.video, args.model, args.device, args.conf, args.iou, args.imgsz,
+        combo_models=args.combo, split_config=args.split_config)

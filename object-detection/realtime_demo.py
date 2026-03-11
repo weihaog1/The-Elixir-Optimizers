@@ -3,9 +3,14 @@
 import argparse
 import time
 import cv2
+import numpy as np
+import torch
 from ultralytics import YOLO
+from ultralytics.data.augment import LetterBox
+from ultralytics.utils.ops import scale_boxes
 from src.classification.card_classifier import CardPredictor
 from src.ocr.text_extractor import GameTextExtractor
+from src.yolov8_custom.custom_utils import non_max_suppression
 
 # Card slot coordinates for 1080x1920
 CARD_SLOTS = [
@@ -18,10 +23,33 @@ CARD_SLOTS = [
 # YOLO arena cutoff - exclude card/UI area below this y coordinate
 ARENA_CUTOFF_Y = 1550
 
-
 def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
-        card_model_path=None, enable_ocr=False, ocr_interval=5):
-    model = YOLO(model_path)
+        card_model_path=None, enable_ocr=False, ocr_interval=5,
+        belonging_model=False, combo_models=None, split_config=None):
+    # Combo mode: dual-detector inference
+    combo_detector = None
+    if combo_models and split_config:
+        from src.detection.combo_detector import ComboDetector
+        combo_detector = ComboDetector(
+            model_paths=combo_models, split_config_path=split_config,
+            conf=conf, iou=iou, device=device, imgsz=imgsz,
+        )
+        use_belonging = True
+        print(f"Combo mode: {combo_models[0]} + {combo_models[1]}")
+        model = None
+    else:
+        model = YOLO(model_path)
+        use_belonging = belonging_model
+
+    # For belonging models, set up letterbox and get nc for custom NMS
+    # auto=True pads to stride multiple instead of forcing square (KataCR approach)
+    # This minimizes gray padding and eliminates edge detection artifacts
+    letterbox = None
+    nc = None
+    if use_belonging and model is not None:
+        nc = model.model.model[-1].nc
+        letterbox = LetterBox(new_shape=(imgsz, imgsz), auto=True, stride=32)
+        print(f"Belonging mode: nc={nc}, using custom NMS (auto letterbox)")
 
     card_predictor = None
     if card_model_path:
@@ -46,7 +74,10 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
     frame_num = 0
 
     print(f"Video: {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{frame_height} @ {vid_fps:.0f}fps, {total_frames} frames")
-    print(f"Model: {model_path} on {device}, imgsz={imgsz}, conf={conf}")
+    if combo_detector:
+        print(f"Combo detector on {device}, imgsz={imgsz}, conf={conf}")
+    else:
+        print(f"Model: {model_path} on {device}, imgsz={imgsz}, conf={conf}")
     print(f"Arena midpoint Y: {arena_mid_y:.0f}px (ally below, enemy above)")
     print(f"Controls: [space] pause/resume, [q] quit, [s] save frame, [</>] step when paused")
 
@@ -56,7 +87,10 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
         return
     frame_num = 1
     print("Warming up model...")
-    model.predict(frame, conf=conf, iou=iou, device=device, verbose=False, imgsz=imgsz)
+    if combo_detector:
+        combo_detector.warmup()
+    else:
+        model.predict(frame, conf=conf, iou=iou, device=device, verbose=False, imgsz=imgsz)
     print("Ready. Playing at native speed.")
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
     frame_num = 0
@@ -86,17 +120,44 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
 
         t0 = time.time()
         arena_frame = frame[:ARENA_CUTOFF_Y, :]
-        results = model.predict(
-            arena_frame,
-            conf=conf,
-            iou=iou,
-            device=device,
-            verbose=False,
-            imgsz=imgsz,
-        )
-        infer_ms = (time.time() - t0) * 1000
 
-        n_dets = len(results[0].boxes) if results[0].boxes is not None else 0
+        if combo_detector:
+            # Dual-detector path: ComboDetector handles both models
+            dets = combo_detector.infer(frame, arena_cutoff=ARENA_CUTOFF_Y)
+            names = combo_detector.names
+            results = None
+            n_dets = len(dets)
+        elif use_belonging:
+            # Custom NMS path: raw forward pass + belonging-aware NMS
+            img_lb = letterbox(image=arena_frame)
+            img_lb = img_lb.transpose(2, 0, 1)[::-1].copy()  # HWC->CHW, BGR->RGB
+            img_t = torch.from_numpy(img_lb).unsqueeze(0).float() / 255.0
+            img_t = img_t.to(next(model.model.parameters()).device)
+            with torch.no_grad():
+                preds = model.model(img_t)
+            dets = non_max_suppression(preds, conf_thres=conf, iou_thres=iou, nc=nc)[0]
+            if len(dets) > 0:
+                dets[:, :4] = scale_boxes(img_t.shape[2:], dets[:, :4], arena_frame.shape[:2])
+                dets = dets.cpu().numpy()
+            else:
+                dets = np.zeros((0, 7))
+            names = model.model.names
+            results = None
+            n_dets = len(dets)
+        else:
+            results = model.predict(
+                arena_frame,
+                conf=conf,
+                iou=iou,
+                device=device,
+                verbose=False,
+                imgsz=imgsz,
+            )
+            dets = None
+            names = results[0].names
+            n_dets = len(results[0].boxes) if results[0].boxes is not None else 0
+
+        infer_ms = (time.time() - t0) * 1000
 
         # OCR extraction (run periodically, cache results)
         if ocr is not None and frame_num % ocr_interval == 0:
@@ -135,7 +196,29 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
                 cv2.putText(display, region_name, (sx1, sy1 - 4),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.35, (255, 0, 255), 1)
 
-        if results[0].boxes is not None and len(results[0].boxes):
+        if (use_belonging or combo_detector) and dets is not None and len(dets) > 0:
+            for d in dets:
+                x1, y1, x2, y2 = [int(v * scale) for v in d[:4]]
+                c = d[4]
+                cls_id = int(d[5])
+                side = int(d[6])  # 0=ally, 1=enemy from model
+
+                color = (255, 150, 0) if side == 0 else (0, 0, 255)
+                cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
+
+                class_name = names.get(cls_id, f"cls_{cls_id}")
+                side_label = "A" if side == 0 else "E"
+                label = f"{class_name} {c:.0%} [{side_label}/B]"
+
+                font_scale = 0.45
+                thickness = 1
+                (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+                label_y = max(y1 - 4, th + 4)
+                cv2.rectangle(display, (x1, label_y - th - 4), (x1 + tw + 4, label_y), color, -1)
+                cv2.putText(display, label, (x1 + 2, label_y - 2),
+                           cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness)
+
+        elif results is not None and results[0].boxes is not None and len(results[0].boxes):
             boxes = results[0].boxes.xyxy.cpu().numpy()
             confs = results[0].boxes.conf.cpu().numpy()
             cls_ids = results[0].boxes.cls.cpu().numpy().astype(int)
@@ -143,15 +226,14 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
             for box, c, cls_id in zip(boxes, confs, cls_ids):
                 x1, y1, x2, y2 = [int(v * scale) for v in box]
                 center_y = (y1 + y2) / 2
-
                 side = 0 if center_y > mid_y_scaled else 1
-                color = (255, 150, 0) if side == 0 else (0, 0, 255)
 
+                color = (255, 150, 0) if side == 0 else (0, 0, 255)
                 cv2.rectangle(display, (x1, y1), (x2, y2), color, 2)
 
-                class_name = results[0].names.get(cls_id, f"cls_{cls_id}")
+                class_name = names.get(cls_id, f"cls_{cls_id}")
                 side_label = "A" if side == 0 else "E"
-                label = f"{class_name} {c:.0%} [{side_label}]"
+                label = f"{class_name} {c:.0%} [{side_label}/Y]"
 
                 font_scale = 0.45
                 thickness = 1
@@ -169,7 +251,6 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
                 name, card_conf = card_predictor.predict(crop)
                 card_results.append((name, card_conf))
 
-            import numpy as np
             bar_h = 50
             bar = np.zeros((bar_h, display_w, 3), dtype=np.uint8)
             cv2.putText(bar, "HAND:", (5, 30),
@@ -219,7 +300,7 @@ def run(video_path, model_path, device="mps", conf=0.25, iou=0.45, imgsz=960,
                 start_time = time.time() - (frame_num / vid_fps)
         elif key == ord('s'):
             save_path = f"frame_{frame_num}.jpg"
-            cv2.imwrite(save_path, annotated)
+            cv2.imwrite(save_path, display)
             print(f"Saved: {save_path}")
         elif key == ord('.') and paused:
             ret, frame = cap.read()
@@ -245,12 +326,17 @@ if __name__ == "__main__":
     parser.add_argument("--conf", type=float, default=0.25)
     parser.add_argument("--iou", type=float, default=0.45)
     parser.add_argument("--imgsz", type=int, default=960, help="Inference resolution (960 recommended)")
-    parser.add_argument("--class-names", default=None, help="Path to class names YAML (e.g. 155-class config)")
     parser.add_argument("--card-model", default=None, help="Path to card classifier .pt weights")
     parser.add_argument("--ocr", action="store_true", help="Enable OCR for elixir and timer")
     parser.add_argument("--ocr-interval", type=int, default=5, help="Run OCR every N frames")
+    parser.add_argument("--belonging", action="store_true", help="Use model belonging output for ally/enemy (vs Y-position heuristic)")
+    parser.add_argument("--combo", nargs=2, metavar=("D1_MODEL", "D2_MODEL"),
+                        help="Dual-detector combo mode: two model paths (detector1 detector2)")
+    parser.add_argument("--split-config", default="configs/split_config.json",
+                        help="Path to split_config.json for combo mode index remapping")
     args = parser.parse_args()
 
     run(args.video, args.model, args.device, args.conf, args.iou, args.imgsz,
         card_model_path=args.card_model, enable_ocr=args.ocr,
-        ocr_interval=args.ocr_interval)
+        ocr_interval=args.ocr_interval, belonging_model=args.belonging,
+        combo_models=args.combo, split_config=args.split_config)
