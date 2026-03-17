@@ -86,7 +86,7 @@ title: Home
     </li>
     <li>
       <a href="{{ 'final.html' | relative_url }}">Final Report</a>
-      <span class="elixir-badge elixir-badge--crimson">Upcoming</span>
+      <span class="elixir-badge elixir-badge--gold">Complete</span>
     </li>
   </ul>
 </section>
