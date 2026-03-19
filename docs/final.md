@@ -392,11 +392,23 @@ wide: true
     </div>
   </div>
 
-  <h4 class="sub-title">Detection in Action</h4>
+  <h4 class="sub-title">Detection in Action: Before and After</h4>
 
-  <div class="fig">
-    <img src="{{ "images/status/detection_demo.gif" | relative_url }}" alt="Animated demo of real-time detection with bounding boxes and belonging labels on live gameplay">
-    <p class="caption">Figure 3. Real-time detection on live gameplay - bounding boxes with class labels and ally/enemy belonging indicators.</p>
+  <p>Three views of gameplay: raw pixels (what the agent sees), single YOLOv8s detection (our first model), and dual YOLOv8m detection (our final model with ally/enemy belonging). Orange boxes = ally, red = enemy, gray = non-combat UI.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md); margin: var(--space-md) 0;">
+    <div class="fig">
+      <img src="{{ "images/final/raw_gameplay.gif" | relative_url }}" alt="Raw gameplay with no detection overlay" style="max-height: 600px; width: 100%;">
+      <p class="caption">Raw pixels -- agent input.</p>
+    </div>
+    <div class="fig">
+      <img src="{{ "images/status/detection_demo.gif" | relative_url }}" alt="Single YOLOv8s detection with bounding boxes and class labels" style="max-height: 600px; width: 100%;">
+      <p class="caption">Single YOLOv8s -- belonging via Y-position heuristic (hard line at arena midpoint) because adding belonging to the classification head overwhelmed the single model.</p>
+    </div>
+    <div class="fig">
+      <img src="{{ "images/final/dual_detection_demo.gif" | relative_url }}" alt="Dual YOLOv8m detection with bounding boxes, class labels, and belonging indicators" style="max-height: 600px; width: 100%;">
+      <p class="caption">Dual YOLOv8m -- final detector with belonging.</p>
+    </div>
   </div>
 
 </div>
