@@ -1227,7 +1227,6 @@ probs = softmax(logits)   # invalid actions get probability 0</code></pre>
   <h4 class="sub-title">Datasets and External Code</h4>
 
   <ul>
-    <li><strong>KataCR</strong> (MIT License) -- 155-class detection schema, synthetic data generation approach, sprite cutouts. <a href="https://github.com/wty-yy/KataCR">github.com/wty-yy/KataCR</a></li>
     <li><strong>Clash Royale Detection Dataset</strong> -- 6,939 human-annotated real images. We used 1,388 as a held-out validation set. <a href="https://github.com/wty-yy/Clash-Royale-Detection-Dataset">github.com/wty-yy/Clash-Royale-Detection-Dataset</a>. We forked this and added 383 custom ally sprite cutouts.</li>
     <li><strong>ClashRoyaleBuildABot</strong> -- design reference for game automation approach. <a href="https://github.com/Pbatch/ClashRoyaleBuildABot">github.com/Pbatch/ClashRoyaleBuildABot</a></li>
   </ul>
@@ -1240,12 +1239,12 @@ probs = softmax(logits)   # invalid actions get probability 0</code></pre>
 
   <h4 class="sub-title">AI Tool Usage</h4>
 
-  <p>Claude (Anthropic) was used for:</p>
+  <p>Claude was used to assist with:</p>
 
   <ul>
     <li>Boilerplate code scaffolding and documentation drafting</li>
     <li>Debugging assistance and code review</li>
-    <li>Website design and report formatting</li>
+    <li>Website implementation and report formatting</li>
   </ul>
 
   <p>All core technical work -- model architecture design, training pipeline implementation, reward engineering, data collection, and evaluation -- was done by the team. AI-generated code was reviewed and modified before integration.</p>
