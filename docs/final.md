@@ -1247,8 +1247,6 @@ probs = softmax(logits)   # invalid actions get probability 0</code></pre>
     <li>Website implementation and report formatting</li>
   </ul>
 
-  <p>All core technical work -- model architecture design, training pipeline implementation, reward engineering, data collection, and evaluation -- was done by the team. AI-generated code was reviewed and modified before integration.</p>
-
 </div>
 </section>
 
