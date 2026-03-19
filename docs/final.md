@@ -325,12 +325,7 @@ wide: true
   </div>
 
   <div class="step-card">
-    <p><strong>4. Noise Sprites (Hard Negatives)</strong></p>
-    <p>25% of placed sprites are noise - irrelevant visual elements that teach the detector what <em>not</em> to detect. This single technique eliminated hallucinations from 50 per evaluation to 0.</p>
-  </div>
-
-  <div class="step-card">
-    <p><strong>5. Class Balancing</strong></p>
+    <p><strong>4. Class Balancing</strong></p>
     <p>Inverse frequency weighting ensures rare classes appear often enough for the detector to learn them.</p>
   </div>
 
